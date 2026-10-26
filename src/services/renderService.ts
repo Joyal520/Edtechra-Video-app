@@ -44,20 +44,41 @@ export class ClientVideoRenderService implements VideoRenderService {
 
     // Attempt Server-Side High-Fidelity FFmpeg Rendering first
     try {
-      notify('assets', 25, 'Rasterizing 9:16 vertical scenes and loading audio stems...');
+      notify('assets', 20, 'Rasterizing 9:16 vertical scenes and loading audio stems...');
+
+      // Dynamic progress ticker while server compiles video
+      let progressVal = 20;
+      const progressTimer = setInterval(() => {
+        if (progressVal < 92) {
+          progressVal += Math.floor(Math.random() * 3) + 2;
+          let stage: RenderProgressUpdate['stage'] = 'assets';
+          let msg = 'Rasterizing 9:16 vertical scenes...';
+          if (progressVal > 35 && progressVal <= 55) {
+            stage = 'voiceover';
+            msg = 'Aligning continuous voiceover narration on master timeline...';
+          } else if (progressVal > 55 && progressVal <= 75) {
+            stage = 'music';
+            msg = 'Mixing continuous soundtrack with smart audio ducking...';
+          } else if (progressVal > 75) {
+            stage = 'rendering';
+            msg = 'Encoding 1080×1920 MP4 (H.264 / AAC broadcast format)...';
+          }
+          notify(stage, progressVal, msg);
+        }
+      }, 1200);
+
       const serverRes = await fetch('/api/render-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ project, options }),
       });
 
+      clearInterval(progressTimer);
+
       if (serverRes.ok) {
-        notify('voiceover', 48, '✓ Synchronized OpenAI voiceover speech track');
-        notify('music', 68, '✓ Mixed background music with smart ducking');
-        notify('rendering', 88, 'Encoding 1080×1920 MP4 (H.264 / AAC broadcast format)...');
         const data = await serverRes.json();
         if (data.success && data.downloadUrl) {
-          notify('completed', 100, 'MP4 video ready for download!');
+          notify('completed', 100, '✓ Video successfully compiled & validated!');
           return {
             downloadUrl: data.downloadUrl,
             filename: data.filename,

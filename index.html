@@ -9,26 +9,9 @@
     <meta property="og:description" content="Create polished faceless educational and social-media videos with AI scripts, visual styles, voiceovers, captions, and real-time preview." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="stylesheet" crossorigin href="./assets/index-ps2v108l.css">
-    <script>
-      // When deployed directly on GitHub Pages with / (root) deployment,
-      // load the compiled production bundle immediately.
-      if (window.location.hostname.includes('github.io')) {
-        var s = document.createElement('script');
-        s.type = 'module';
-        s.crossOrigin = '';
-        s.src = './assets/index-wxARIxuO.js';
-        document.head.appendChild(s);
-      }
-    </script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module">
-      // Only run local Vite dev server entry point when running locally
-      if (!window.location.hostname.includes('github.io')) {
-        import('/src/main.tsx');
-      }
-    </script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

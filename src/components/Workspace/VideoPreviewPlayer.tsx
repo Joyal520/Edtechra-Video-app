@@ -6,7 +6,7 @@ import {
   TransitionEffect,
   CaptionSettings,
 } from '../../types/video';
-import { musicPlayer, MUSIC_TRACKS } from '../../services/musicService';
+import { MUSIC_TRACKS } from '../../services/musicService';
 import { voiceGenerationService } from '../../services/voiceGenerationService';
 import {
   Play,
@@ -38,7 +38,7 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(0.8);
+  const [volume, setVolume] = useState(0.85);
   const [isLooping, setIsLooping] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -46,22 +46,30 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
   const animationFrameRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
 
-  const scenes = project.scenes;
-  const totalDuration = project.project.total_duration || scenes.reduce((acc, s) => acc + s.duration, 0);
+  // Audio References for Master Timeline playback
+  const voiceAudioRef = useRef<HTMLAudioElement | null>(null);
+  const bgMusicAudioRef = useRef<HTMLAudioElement | null>(null);
+  const currentSceneIdRef = useRef<number | null>(null);
 
-  // Compute accumulated scene start times
+  const scenes = project.scenes;
+  const totalDuration =
+    project.project.total_duration ||
+    scenes.reduce((acc, s) => acc + (s.duration || 5), 0);
+
+  // Compute accumulated scene start times on master timeline
   const sceneTimeline = scenes.map((s, idx) => {
-    const start = scenes.slice(0, idx).reduce((acc, prev) => acc + prev.duration, 0);
+    const start = scenes.slice(0, idx).reduce((acc, prev) => acc + (prev.duration || 5), 0);
+    const dur = s.duration || 5;
     return {
       index: idx,
       scene: s,
       start,
-      end: start + s.duration,
-      duration: s.duration,
+      end: start + dur,
+      duration: dur,
     };
   });
 
-  // Identify current active scene based on currentTime
+  // Identify current active scene based on master currentTime
   const currentSceneInfo =
     sceneTimeline.find((st) => currentTime >= st.start && currentTime < st.end) ||
     sceneTimeline[sceneTimeline.length - 1] || {
@@ -78,35 +86,83 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
     Math.max(0, (currentTime - currentSceneInfo.start) / currentSceneInfo.duration)
   );
 
-  // Keep parent's active scene index in sync when time advances
+  // Keep parent active scene index in sync
   useEffect(() => {
     if (currentSceneInfo.index !== activeSceneIndex) {
       onSceneChange(currentSceneInfo.index);
     }
   }, [currentSceneInfo.index, activeSceneIndex, onSceneChange]);
 
-  // Audio & Background Music sync
-  const voiceAudioRef = useRef<HTMLAudioElement | null>(null);
-
+  // ==========================================
+  // 1. MASTER CONTINUOUS BACKGROUND MUSIC
+  // ==========================================
   useEffect(() => {
-    const track = MUSIC_TRACKS.find((t) => t.id === project.project.musicTrackId) || MUSIC_TRACKS[0];
+    const track =
+      MUSIC_TRACKS.find((t) => t.id === project.project.musicTrackId) ||
+      MUSIC_TRACKS[0];
+
+    if (!track?.audioUrl) return;
 
     if (isPlaying && !isMuted) {
-      // Audio ducking: when voice is present, duck background music
+      const baseVol = project.project.musicVolume ?? 0.22;
       const hasVoice = Boolean(activeScene?.audioUrl || activeScene?.narration);
       const duckFactor = hasVoice ? 0.35 : 1.0;
-      const targetMusicVol = (project.project.musicVolume ?? 0.25) * duckFactor * volume;
-      musicPlayer.playTrack(track, targetMusicVol);
+      const targetVol = baseVol * duckFactor * volume;
+
+      if (!bgMusicAudioRef.current) {
+        const audio = new Audio(track.audioUrl);
+        audio.loop = true;
+        audio.volume = targetVol;
+        audio.currentTime = currentTime % (track.duration || 45);
+        audio.play().catch(() => {});
+        bgMusicAudioRef.current = audio;
+      } else {
+        // Change track if ID changed
+        if (bgMusicAudioRef.current.src !== new URL(track.audioUrl, window.location.href).href) {
+          bgMusicAudioRef.current.pause();
+          const audio = new Audio(track.audioUrl);
+          audio.loop = true;
+          audio.volume = targetVol;
+          audio.currentTime = currentTime % (track.duration || 45);
+          audio.play().catch(() => {});
+          bgMusicAudioRef.current = audio;
+        } else {
+          // Track is already running - ONLY update volume (ducking) and resume if paused!
+          // NEVER restart track on scene change!
+          bgMusicAudioRef.current.volume = targetVol;
+          if (bgMusicAudioRef.current.paused) {
+            bgMusicAudioRef.current.play().catch(() => {});
+          }
+        }
+      }
     } else {
-      musicPlayer.stop();
+      if (bgMusicAudioRef.current) {
+        bgMusicAudioRef.current.pause();
+      }
     }
+  }, [
+    isPlaying,
+    isMuted,
+    volume,
+    project.project.musicTrackId,
+    project.project.musicVolume,
+    activeScene?.audioUrl,
+    activeScene?.narration,
+  ]);
 
+  // Clean up bg music on unmount
+  useEffect(() => {
     return () => {
-      musicPlayer.stop();
+      if (bgMusicAudioRef.current) {
+        bgMusicAudioRef.current.pause();
+        bgMusicAudioRef.current = null;
+      }
     };
-  }, [isPlaying, isMuted, volume, project.project.musicTrackId, project.project.musicVolume, activeScene?.id]);
+  }, []);
 
-  // Scene Voice Audio Sync
+  // ==========================================
+  // 2. MASTER CONTINUOUS VOICEOVER PLAYBACK
+  // ==========================================
   useEffect(() => {
     if (!isPlaying || isMuted) {
       if (voiceAudioRef.current) {
@@ -114,12 +170,16 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
         voiceAudioRef.current = null;
       }
       voiceGenerationService.stopSpeech();
+      currentSceneIdRef.current = null;
       return;
     }
 
-    if (activeScene?.audioUrl) {
-      voiceGenerationService.stopSpeech();
-      if (!voiceAudioRef.current || voiceAudioRef.current.src !== activeScene.audioUrl) {
+    // Check if we need to switch scene audio
+    if (currentSceneIdRef.current !== activeScene?.id) {
+      currentSceneIdRef.current = activeScene?.id ?? null;
+
+      if (activeScene?.audioUrl) {
+        voiceGenerationService.stopSpeech();
         if (voiceAudioRef.current) {
           voiceAudioRef.current.pause();
         }
@@ -129,24 +189,43 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
         audio.currentTime = sceneOffset;
         audio.play().catch(() => {});
         voiceAudioRef.current = audio;
+      } else if (activeScene?.narration) {
+        if (voiceAudioRef.current) {
+          voiceAudioRef.current.pause();
+          voiceAudioRef.current = null;
+        }
+        voiceGenerationService.speakPreview(activeScene.narration, project.project.voiceId);
+      } else {
+        if (voiceAudioRef.current) {
+          voiceAudioRef.current.pause();
+          voiceAudioRef.current = null;
+        }
+        voiceGenerationService.stopSpeech();
       }
-    } else if (activeScene?.narration) {
+    }
+  }, [
+    activeScene?.id,
+    isPlaying,
+    isMuted,
+    volume,
+    project.project.voiceId,
+    project.project.voiceVolume,
+  ]);
+
+  // Clean up voice audio on unmount
+  useEffect(() => {
+    return () => {
       if (voiceAudioRef.current) {
         voiceAudioRef.current.pause();
         voiceAudioRef.current = null;
       }
-      voiceGenerationService.speakPreview(activeScene.narration, project.project.voiceId);
-    }
-
-    return () => {
-      if (voiceAudioRef.current) {
-        voiceAudioRef.current.pause();
-      }
       voiceGenerationService.stopSpeech();
     };
-  }, [activeScene?.id, isPlaying, isMuted, volume, project.project.voiceId, project.project.voiceVolume]);
+  }, []);
 
-  // Main playback timer loop
+  // ==========================================
+  // 3. MASTER PLAYBACK TIMER LOOP
+  // ==========================================
   useEffect(() => {
     if (!isPlaying) {
       if (animationFrameRef.current) {
@@ -163,6 +242,7 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
           const next = prev + delta;
           if (next >= totalDuration) {
             if (isLooping) {
+              handleRestart();
               return 0;
             } else {
               setIsPlaying(false);
@@ -186,17 +266,56 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
 
   const togglePlay = () => {
     if (currentTime >= totalDuration) {
-      setCurrentTime(0);
+      handleRestart();
+      return;
     }
     setIsPlaying((prev) => !prev);
   };
 
   const handleSeek = (newTime: number) => {
-    setCurrentTime(Math.min(totalDuration, Math.max(0, newTime)));
+    const clamped = Math.min(totalDuration, Math.max(0, newTime));
+    setCurrentTime(clamped);
+
+    // Sync Background Music time without restarting
+    if (bgMusicAudioRef.current) {
+      const track =
+        MUSIC_TRACKS.find((t) => t.id === project.project.musicTrackId) ||
+        MUSIC_TRACKS[0];
+      bgMusicAudioRef.current.currentTime = clamped % (track.duration || 45);
+    }
+
+    // Sync Scene Voice Audio time
+    const targetInfo =
+      sceneTimeline.find((st) => clamped >= st.start && clamped < st.end) ||
+      sceneTimeline[sceneTimeline.length - 1];
+
+    if (targetInfo) {
+      const offset = Math.max(0, clamped - targetInfo.start);
+      if (voiceAudioRef.current && targetInfo.scene.audioUrl) {
+        if (targetInfo.scene.id === activeScene?.id) {
+          voiceAudioRef.current.currentTime = offset;
+        } else {
+          voiceAudioRef.current.pause();
+          const audio = new Audio(targetInfo.scene.audioUrl);
+          audio.volume = (project.project.voiceVolume ?? 1.0) * volume;
+          audio.currentTime = offset;
+          if (isPlaying && !isMuted) audio.play().catch(() => {});
+          voiceAudioRef.current = audio;
+          currentSceneIdRef.current = targetInfo.scene.id;
+        }
+      }
+    }
   };
 
   const handleRestart = () => {
     setCurrentTime(0);
+    if (bgMusicAudioRef.current) {
+      bgMusicAudioRef.current.currentTime = 0;
+    }
+    if (voiceAudioRef.current) {
+      voiceAudioRef.current.currentTime = 0;
+    }
+    currentSceneIdRef.current = null;
     setIsPlaying(true);
   };
 
@@ -209,63 +328,43 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
     }
   };
 
-  // Compute CSS style transformation for current scene animation
+  // ==========================================
+  // 4. ANIMATION TRANSFORM FOR SCENE
+  // ==========================================
   const getAnimationTransform = (anim: AnimationEffect, progress: number): string => {
     switch (anim) {
       case 'slow_zoom_in':
-        return `scale(${1 + progress * 0.12})`;
+        return `scale(${1.0 + progress * 0.10})`;
       case 'slow_zoom_out':
-        return `scale(${1.12 - progress * 0.12})`;
+        return `scale(${1.10 - progress * 0.10})`;
       case 'pan_left':
-        return `scale(1.08) translateX(${-progress * 4}%)`;
+        return `scale(1.10) translateX(${-(progress * 5)}%)`;
       case 'pan_right':
-        return `scale(1.08) translateX(${progress * 4 - 2}%)`;
+        return `scale(1.10) translateX(${progress * 5 - 2.5}%)`;
       case 'pan_up':
-        return `scale(1.08) translateY(${-progress * 4}%)`;
+        return `scale(1.10) translateY(${-(progress * 5)}%)`;
       case 'pan_down':
-        return `scale(1.08) translateY(${progress * 4 - 2}%)`;
+        return `scale(1.10) translateY(${progress * 5 - 2.5}%)`;
       case 'ken_burns':
-        return `scale(${1.05 + progress * 0.1}) translate(${-progress * 3}%, ${progress * 2}%)`;
+        return `scale(${1.04 + progress * 0.08}) translate(${-(progress * 3)}%, ${progress * 2}%)`;
       case 'floating':
-        return `translateY(${Math.sin(progress * Math.PI * 2) * 8}px) scale(1.02)`;
+        return `translateY(${Math.sin(progress * Math.PI * 2) * 6}px) scale(1.03)`;
       case 'parallax':
-        return `scale(${1 + progress * 0.05}) rotate(${Math.sin(progress * Math.PI) * 1.5}deg)`;
-      case 'shake':
-        return `translate(${Math.sin(progress * 20) * 4}px, ${Math.cos(progress * 15) * 3}px)`;
-      case 'bounce':
-        return `scale(${1 + Math.abs(Math.sin(progress * Math.PI * 3)) * 0.06})`;
+        return `scale(${1.02 + progress * 0.05}) rotate(${Math.sin(progress * Math.PI) * 1.2}deg)`;
       case 'none':
       default:
-        return 'scale(1)';
+        return 'scale(1.02)';
     }
   };
 
-  // Compute transition opacity or offset during scene entry
-  const getTransitionStyle = (trans: TransitionEffect, progress: number): React.CSSProperties => {
-    const entryRatio = 0.15; // first 15% of scene
-    if (progress > entryRatio) {
-      return { opacity: 1, transform: 'none' };
-    }
-    const t = progress / entryRatio;
+  // Transition calculation between outgoing and incoming scenes
+  const transitionDurationSec = 0.45;
+  const timeIntoScene = currentTime - currentSceneInfo.start;
+  const isTransitioning = currentSceneInfo.index > 0 && timeIntoScene < transitionDurationSec;
+  const transProgress = isTransitioning ? timeIntoScene / transitionDurationSec : 1;
+  const prevScene = isTransitioning ? scenes[currentSceneInfo.index - 1] : null;
 
-    switch (trans) {
-      case 'fade':
-      case 'crossfade':
-        return { opacity: t };
-      case 'slide_left':
-        return { transform: `translateX(${(1 - t) * 100}%)`, opacity: 0.8 + t * 0.2 };
-      case 'slide_right':
-        return { transform: `translateX(${-(1 - t) * 100}%)`, opacity: 0.8 + t * 0.2 };
-      case 'zoom':
-        return { transform: `scale(${0.75 + t * 0.25})`, opacity: t };
-      case 'blur':
-        return { filter: `blur(${(1 - t) * 12}px)`, opacity: t };
-      default:
-        return { opacity: 1 };
-    }
-  };
-
-  // Render Subtitles / Captions based on caption settings
+  // Render Subtitles / Captions
   const renderCaptions = () => {
     const { captions } = project;
     if (!captions.enabled || !activeScene?.narration) return null;
@@ -276,12 +375,10 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
       Math.floor(sceneProgress * words.length)
     );
 
-    // Group words into lines according to maxWordsPerLine
     const maxWords = captions.maxWordsPerLine || 5;
     const currentLineStart = Math.floor(activeWordIndex / maxWords) * maxWords;
     const visibleWords = words.slice(currentLineStart, currentLineStart + maxWords);
 
-    // Positioning
     const posClass =
       captions.position === 'top'
         ? 'top-8'
@@ -301,7 +398,7 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
     if (captions.style === 'KARAOKE') {
       return (
         <div className={`absolute left-0 right-0 px-6 ${posClass} z-20 pointer-events-none text-center`}>
-          <div className="inline-block px-4 py-2 rounded-xl bg-black/70 backdrop-blur-md border border-white/10 shadow-2xl">
+          <div className="inline-block px-4 py-2 rounded-xl bg-black/75 backdrop-blur-md border border-white/10 shadow-2xl">
             <div className={`flex flex-wrap items-center justify-center gap-1.5 ${sizeClass} tracking-wide`}>
               {visibleWords.map((word, idx) => {
                 const globalIdx = currentLineStart + idx;
@@ -313,7 +410,7 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
                     key={idx}
                     className={`transition-all duration-100 ${
                       isHighlighted
-                        ? 'text-amber-300 scale-110 drop-shadow-[0_0_12px_rgba(250,204,21,0.8)] font-black'
+                        ? 'text-amber-300 scale-110 drop-shadow-[0_0_12px_rgba(250,204,21,0.85)] font-black'
                         : isPassed
                         ? 'text-white'
                         : 'text-neutral-400 opacity-80'
@@ -329,42 +426,10 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
       );
     }
 
-    if (captions.style === 'POP') {
-      return (
-        <div className={`absolute left-0 right-0 px-6 ${posClass} z-20 pointer-events-none text-center`}>
-          <div className="inline-block px-4 py-2 rounded-xl bg-black/80 border-2 border-indigo-500 shadow-xl animate-pulse">
-            <p className={`text-white uppercase ${sizeClass} tracking-wider`}>
-              {visibleWords.join(' ')}
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    if (captions.style === 'BOLD') {
-      return (
-        <div className={`absolute left-0 right-0 px-6 ${posClass} z-20 pointer-events-none text-center`}>
-          <div className="inline-block px-4 py-2 rounded-lg bg-black text-white font-black uppercase tracking-widest shadow-2xl">
-            <p className={sizeClass}>{visibleWords.join(' ')}</p>
-          </div>
-        </div>
-      );
-    }
-
-    if (captions.style === 'MINIMAL') {
-      return (
-        <div className={`absolute left-0 right-0 px-6 ${posClass} z-20 pointer-events-none text-center`}>
-          <p className={`text-white/95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] ${sizeClass}`}>
-            {visibleWords.join(' ')}
-          </p>
-        </div>
-      );
-    }
-
-    // NORMAL
+    // Default stylized
     return (
       <div className={`absolute left-0 right-0 px-6 ${posClass} z-20 pointer-events-none text-center`}>
-        <div className="inline-block px-4 py-1.5 rounded-lg bg-black/70 backdrop-blur-sm shadow-md">
+        <div className="inline-block px-4 py-1.5 rounded-lg bg-black/75 backdrop-blur-sm shadow-md border border-white/10">
           <p className={`text-white ${sizeClass}`}>{visibleWords.join(' ')}</p>
         </div>
       </div>
@@ -377,7 +442,6 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // Determine aspect ratio container dimensions
   const getAspectRatioClasses = () => {
     switch (project.project.aspect_ratio) {
       case '9:16':
@@ -386,8 +450,6 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
         return 'aspect-[16/9] w-full max-h-[500px] shadow-2xl';
       case '1:1':
         return 'aspect-square max-h-[540px] w-auto mx-auto shadow-2xl';
-      case '4:5':
-        return 'aspect-[4/5] max-h-[580px] w-auto mx-auto shadow-2xl';
       default:
         return 'aspect-[9/16] max-h-[640px] w-auto mx-auto shadow-2xl';
     }
@@ -426,10 +488,37 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
         <div
           className={`relative rounded-2xl overflow-hidden bg-black border-2 border-neutral-800 shadow-2xl ${getAspectRatioClasses()}`}
         >
-          {/* Visual Scene Canvas / Image Layer */}
+          {/* Transition Base Layer: Outgoing previous scene during transition */}
+          {isTransitioning && prevScene?.imageUrl && (
+            <div className="absolute inset-0 z-0 overflow-hidden">
+              <img
+                src={prevScene.imageUrl}
+                alt={`Scene ${prevScene.id}`}
+                className="w-full h-full object-cover object-center select-none"
+                style={{
+                  transform: getAnimationTransform(prevScene.animation || 'slow_zoom_in', 1.0),
+                  opacity: 1 - transProgress,
+                  transition: 'opacity 0.05s linear',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Incoming Active Scene Layer */}
           <div
-            className="w-full h-full relative overflow-hidden transition-all duration-300"
-            style={getTransitionStyle(activeScene?.transition || 'fade', sceneProgress)}
+            className="w-full h-full relative z-10 overflow-hidden"
+            style={{
+              opacity: isTransitioning ? transProgress : 1,
+              transform:
+                isTransitioning && activeScene?.transition === 'slide_left'
+                  ? `translateX(${(1 - transProgress) * 100}%)`
+                  : isTransitioning && activeScene?.transition === 'slide_right'
+                  ? `translateX(${-(1 - transProgress) * 100}%)`
+                  : isTransitioning && activeScene?.transition === 'zoom'
+                  ? `scale(${0.85 + transProgress * 0.15})`
+                  : 'none',
+              transition: 'opacity 0.05s linear',
+            }}
           >
             {activeScene?.imageUrl ? (
               <img
@@ -441,7 +530,7 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
                     activeScene.animation || 'slow_zoom_in',
                     sceneProgress
                   ),
-                  transition: 'transform 0.1s linear',
+                  transition: 'transform 0.08s linear',
                 }}
               />
             ) : (
@@ -458,12 +547,17 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
 
           {/* Top Scene HUD indicator inside video */}
           <div className="absolute top-3 left-3 z-20 pointer-events-none flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-mono font-bold text-white border border-white/10">
+            <span className="px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-mono font-bold text-white border border-white/10">
               SCENE {activeScene?.id || 1}
             </span>
             <span className="px-2 py-0.5 rounded-md bg-indigo-950/80 backdrop-blur-md text-[10px] font-bold text-indigo-300 border border-indigo-700/40 capitalize">
               {activeScene?.animation.replace(/_/g, ' ')}
             </span>
+            {activeScene?.on_screen_text && (
+              <span className="px-2 py-0.5 rounded-md bg-neutral-900/90 backdrop-blur-md text-[10px] font-extrabold text-amber-300 border border-amber-500/30">
+                {activeScene.on_screen_text}
+              </span>
+            )}
           </div>
 
           {/* Big Center Play/Pause button on hover / pause */}

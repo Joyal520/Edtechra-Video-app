@@ -4,6 +4,7 @@ const STORAGE_KEY = 'faceless_ai_video_projects';
 const ACTIVE_PROJECT_ID_KEY = 'faceless_active_project_id';
 
 // 5-Stage Psychology Video: Dunning-Kruger Effect
+// Calibrated with exact OpenAI TTS speech audio files & master timeline
 export const DUNNING_KRUGER_PROJECT: VideoProject = {
   id: 'project_dunning_kruger_psychology',
   createdAt: '2026-10-26T10:00:00.000Z',
@@ -19,11 +20,11 @@ export const DUNNING_KRUGER_PROJECT: VideoProject = {
     fps: 30,
     style: 'stickman',
     language: 'English',
-    total_duration: 28,
+    total_duration: 28.5,
     voiceId: 'female_educational',
     musicTrackId: 'track_educational_01',
-    musicVolume: 0.2,
-    voiceVolume: 0.95,
+    musicVolume: 0.20,
+    voiceVolume: 1.0,
   },
   captions: {
     enabled: true,
@@ -38,7 +39,7 @@ export const DUNNING_KRUGER_PROJECT: VideoProject = {
   scenes: [
     {
       id: 1,
-      duration: 6.5,
+      duration: 6.6,
       narration: 'At first, beginners may feel very confident because they do not yet know how difficult the subject is.',
       image_prompt: 'Stage 1: Beginner feels very confident standing high on the Peak of Ignorance.',
       on_screen_text: 'STAGE 1: OVERCONFIDENCE',
@@ -64,7 +65,7 @@ export const DUNNING_KRUGER_PROJECT: VideoProject = {
     },
     {
       id: 3,
-      duration: 5.5,
+      duration: 5.2,
       narration: 'Then their confidence drops because they finally see how much they do not know.',
       image_prompt: 'Stage 3: Confidence drops because they realize how much they do not know (Valley of Despair).',
       on_screen_text: 'STAGE 3: CONFIDENCE DROPS',
@@ -81,8 +82,8 @@ export const DUNNING_KRUGER_PROJECT: VideoProject = {
       narration: 'They become more humble and understand that real learning takes time, practice, and patience.',
       image_prompt: 'Stage 4: They become humble and continue learning (Slope of Enlightenment).',
       on_screen_text: 'STAGE 4: PATIENCE & HUMILITY',
-      animation: 'ken_burns',
-      transition: 'zoom',
+      animation: 'pan_right',
+      transition: 'slide_left',
       imageUrl: './samples/dunning_kruger_4.jpg',
       audioUrl: './generated/audio/voice_21252186ddb06b53da3c2a27120bd93c.mp3',
       imageSourceType: 'sample',
@@ -90,14 +91,107 @@ export const DUNNING_KRUGER_PROJECT: VideoProject = {
     },
     {
       id: 5,
-      duration: 5.0,
+      duration: 5.2,
       narration: 'With experience, their skill grows, and their confidence becomes more realistic.',
       image_prompt: 'Stage 5: Their real skill and confidence grow together (Plateau of Sustainable Mastery).',
       on_screen_text: 'STAGE 5: REAL MASTERY',
-      animation: 'floating',
-      transition: 'fade',
+      animation: 'slow_zoom_in',
+      transition: 'crossfade',
       imageUrl: './samples/dunning_kruger_5.jpg',
       audioUrl: './generated/audio/voice_41f08e91a9cfbbfd845870c4127563b7.mp3',
+      imageSourceType: 'sample',
+      cropMode: 'cover',
+    },
+  ],
+};
+
+// Seed Demo Project
+export const SEED_DEMO_PROJECT: VideoProject = {
+  id: 'project_seed_psychology_demo',
+  createdAt: '2026-10-26T00:00:00.000Z',
+  updatedAt: new Date().toISOString(),
+  status: 'ready',
+  originalTopic: 'Why Your Brain Tricks You: The Psychology of Overconfidence',
+  thumbnailUrl: './samples/sample_scene_1.jpg',
+  project: {
+    title: 'Why Your Brain Tricks You',
+    description: 'A 5-part psychological breakdown of how overconfidence traps work in decision-making.',
+    aspect_ratio: '9:16',
+    resolution: '1080x1920',
+    fps: 30,
+    style: 'stickman',
+    language: 'English',
+    total_duration: 35,
+    voiceId: 'female_educational',
+  },
+  captions: {
+    enabled: true,
+    style: 'KARAOKE',
+    fontSize: 'lg',
+    position: 'bottom',
+    textColor: '#ffffff',
+    highlightColor: '#facc15',
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    maxWordsPerLine: 5,
+  },
+  scenes: [
+    {
+      id: 1,
+      duration: 7,
+      narration: 'Have you ever noticed how the least experienced people are often the loudest in the room?',
+      image_prompt: 'Stickman on top of a tiny hill screaming with a megaphone, believing he conquered Everest, minimalist doodle style',
+      on_screen_text: 'THE BEGINNER TRAP',
+      animation: 'slow_zoom_in',
+      transition: 'crossfade',
+      imageUrl: './samples/sample_scene_1.jpg',
+      imageSourceType: 'sample',
+      cropMode: 'cover',
+    },
+    {
+      id: 2,
+      duration: 7,
+      narration: 'Psychologists call this the Peak of Ignorance. When you know very little, your brain tricks you into feeling like an expert.',
+      image_prompt: 'Stickman looking through a tiny telescope at a huge universe, minimalist clean line art, comic stick figure',
+      on_screen_text: 'PEAK OF IGNORANCE',
+      animation: 'pan_left',
+      transition: 'slide_left',
+      imageUrl: './samples/sample_scene_2.jpg',
+      imageSourceType: 'sample',
+      cropMode: 'cover',
+    },
+    {
+      id: 3,
+      duration: 7,
+      narration: 'Then reality hits. The moment you start learning more, your confidence drops straight down into the valley of despair.',
+      image_prompt: 'Stickman falling down into a deep canyon with question marks floating all around, stick figure comic style',
+      on_screen_text: 'VALLEY OF DESPAIR',
+      animation: 'slow_zoom_out',
+      transition: 'crossfade',
+      imageUrl: './samples/sample_scene_3.jpg',
+      imageSourceType: 'sample',
+      cropMode: 'cover',
+    },
+    {
+      id: 4,
+      duration: 7,
+      narration: 'Most people quit right here. But the few who keep studying slowly climb the slope of real knowledge.',
+      image_prompt: 'Stickman hiking up a steep mountain carrying a stack of books, determined expression, minimalist cartoon art',
+      on_screen_text: 'SLOPE OF KNOWLEDGE',
+      animation: 'pan_right',
+      transition: 'slide_left',
+      imageUrl: './samples/sample_scene_4.jpg',
+      imageSourceType: 'sample',
+      cropMode: 'cover',
+    },
+    {
+      id: 5,
+      duration: 7,
+      narration: 'True mastery is quiet. The real experts know how much they still do not know. Follow for more mental models.',
+      image_prompt: 'Stickman sitting serenely on top of a real mountain peak looking at stars, wise peaceful doodle style',
+      on_screen_text: 'QUIET MASTERY',
+      animation: 'slow_zoom_in',
+      transition: 'crossfade',
+      imageUrl: './samples/sample_scene_5.jpg',
       imageSourceType: 'sample',
       cropMode: 'cover',
     },
@@ -108,128 +202,105 @@ export const PROCRASTINATION_PROJECT: VideoProject = {
   id: 'demo_procrastination_project',
   createdAt: '2026-10-26T08:00:00.000Z',
   updatedAt: new Date().toISOString(),
-  status: 'completed',
-  originalTopic: 'Why Do People Procrastinate? The Science of Delaying Work',
-  thumbnailUrl: './samples/sample_scene_1.jpg',
+  status: 'ready',
+  originalTopic: 'The Neuroscience of Procrastination',
+  thumbnailUrl: './samples/sample_scene_2.jpg',
   project: {
-    title: 'Why Do People Procrastinate?',
-    description: 'The psychological battle between your instant gratification monkey and your rational brain.',
+    title: 'The Neuroscience of Procrastination',
+    description: 'Why you avoid the work you care most about and how your prefrontal cortex loses the battle.',
     aspect_ratio: '9:16',
     resolution: '1080x1920',
     fps: 30,
     style: 'stickman',
     language: 'English',
-    total_duration: 38,
+    total_duration: 21,
     voiceId: 'female_educational',
-    musicTrackId: 'track_educational_01',
-    musicVolume: 0.2,
-    voiceVolume: 0.95,
   },
   captions: {
     enabled: true,
-    style: 'KARAOKE',
+    style: 'BOLD',
     fontSize: 'lg',
     position: 'bottom',
     textColor: '#ffffff',
     highlightColor: '#facc15',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    maxWordsPerLine: 5,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    maxWordsPerLine: 4,
   },
   scenes: [
     {
       id: 1,
       duration: 7,
-      narration: 'Have you ever sat down to work, only to find yourself cleaning your room or scrolling memes?',
-      image_prompt: 'A minimalist stickman staring at a glowing laptop screen with a giant question mark overhead, dark background.',
-      on_screen_text: 'WHY DO WE DELAY?',
+      narration: 'Why do you scroll your phone when you have important work due tomorrow?',
+      image_prompt: 'Stickman staring hypnotized at glowing smartphone screen while a massive clock ticks on wall',
+      on_screen_text: 'THE PROCRASTINATION LOOP',
       animation: 'slow_zoom_in',
       transition: 'crossfade',
-      imageUrl: './samples/sample_scene_1.jpg',
-      imageSourceType: 'sample',
-      cropMode: 'cover',
-    },
-    {
-      id: 2,
-      duration: 8,
-      narration: 'Psychologists say procrastination isn’t laziness—it’s an emotional battle between two parts of your brain.',
-      image_prompt: 'A stickman brain split in two: the emotional limbic system battling the calm rational prefrontal cortex.',
-      on_screen_text: 'IT’S NOT LAZINESS',
-      animation: 'pan_left',
-      transition: 'slide_left',
       imageUrl: './samples/sample_scene_2.jpg',
       imageSourceType: 'sample',
       cropMode: 'cover',
     },
     {
-      id: 3,
-      duration: 8,
-      narration: 'Your limbic system wants dopamine right now, while your prefrontal cortex plans for your future.',
-      image_prompt: 'Stickman holding a stopwatch while an instant gratification monkey tempts him with delicious snacks.',
-      on_screen_text: 'THE DOPAMINE TRAP',
-      animation: 'ken_burns',
-      transition: 'zoom',
+      id: 2,
+      duration: 7,
+      narration: 'Your amygdala perceives difficult tasks as emotional threats, triggering instant avoidance.',
+      image_prompt: 'Two stickmen inside brain pulling levers in opposite directions, comic neuroscience doodle',
+      on_screen_text: 'THE EMOTIONAL THREAT',
+      animation: 'pan_left',
+      transition: 'slide_left',
       imageUrl: './samples/sample_scene_3.jpg',
       imageSourceType: 'sample',
       cropMode: 'cover',
     },
     {
-      id: 4,
-      duration: 8,
-      narration: 'When a task feels overwhelming or boring, your brain treats it like an actual threat and runs away.',
-      image_prompt: 'Stickman running away in comic terror from a giant terrifying folder labeled TAXES & DEADLINES.',
-      on_screen_text: 'EMOTIONAL THREAT',
-      animation: 'shake',
-      transition: 'wipe',
-      imageUrl: './samples/sample_scene_4.jpg',
-      imageSourceType: 'sample',
-      cropMode: 'cover',
-    },
-    {
-      id: 5,
+      id: 3,
       duration: 7,
-      narration: 'The fix? The 2-Minute Rule. Commit to just 120 seconds, and momentum will take care of the rest.',
-      image_prompt: 'A confident stickman triumphant on a podium with a glowing trophy and checkmark.',
+      narration: 'To break free, shrink the barrier: commit to working for only two minutes. Action cures fear.',
+      image_prompt: 'Stickman stepping over a tiny hurdle, smiling confidently, clean minimalist cartoon',
       on_screen_text: 'THE 2-MINUTE RULE',
-      animation: 'bounce',
-      transition: 'fade',
-      imageUrl: './samples/sample_scene_5.jpg',
+      animation: 'slow_zoom_out',
+      transition: 'crossfade',
+      imageUrl: './samples/sample_scene_4.jpg',
       imageSourceType: 'sample',
       cropMode: 'cover',
     },
   ],
 };
 
-export const SEED_DEMO_PROJECT: VideoProject = DUNNING_KRUGER_PROJECT;
-
 class StorageService {
   private projects: VideoProject[] = [];
 
   constructor() {
-    this.init();
+    this.loadFromStorage();
   }
 
-  private init() {
-    if (typeof window === 'undefined') return;
+  private loadFromStorage(): void {
+    if (typeof window === 'undefined') {
+      this.projects = [DUNNING_KRUGER_PROJECT, PROCRASTINATION_PROJECT];
+      return;
+    }
 
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         this.projects = JSON.parse(stored);
+      } else {
+        this.projects = [
+          JSON.parse(JSON.stringify(DUNNING_KRUGER_PROJECT)),
+          JSON.parse(JSON.stringify(PROCRASTINATION_PROJECT)),
+        ];
       }
 
-      // Ensure Dunning-Kruger project is present
+      // Always ensure Dunning-Kruger project has calibrated master timeline & assets
       const dkIdx = this.projects.findIndex((p) => p.id === DUNNING_KRUGER_PROJECT.id);
       if (dkIdx === -1) {
         this.projects.unshift(JSON.parse(JSON.stringify(DUNNING_KRUGER_PROJECT)));
       } else {
-        // Upgrade existing Dunning-Kruger entry with latest sample assets & voiceovers
         this.projects[dkIdx] = {
           ...JSON.parse(JSON.stringify(DUNNING_KRUGER_PROJECT)),
-          ...this.projects[dkIdx],
           scenes: DUNNING_KRUGER_PROJECT.scenes,
           project: {
             ...DUNNING_KRUGER_PROJECT.project,
-            ...this.projects[dkIdx].project,
+            title: this.projects[dkIdx].project?.title || DUNNING_KRUGER_PROJECT.project.title,
           },
         };
       }
@@ -271,6 +342,7 @@ class StorageService {
     } else {
       this.projects.unshift(updated);
     }
+
     this.saveToStorage();
   }
 
@@ -279,27 +351,7 @@ class StorageService {
     this.saveToStorage();
   }
 
-  duplicateProject(id: string): VideoProject | null {
-    const original = this.getProjectById(id);
-    if (!original) return null;
-
-    const copy: VideoProject = {
-      ...JSON.parse(JSON.stringify(original)),
-      id: `proj_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      project: {
-        ...original.project,
-        title: `${original.project.title} (Copy)`,
-      },
-    };
-
-    this.projects.unshift(copy);
-    this.saveToStorage();
-    return copy;
-  }
-
-  getActiveProjectId(): string {
+  getActiveProjectId(): string | null {
     if (typeof window === 'undefined') return DUNNING_KRUGER_PROJECT.id;
     return localStorage.getItem(ACTIVE_PROJECT_ID_KEY) || DUNNING_KRUGER_PROJECT.id;
   }
@@ -309,24 +361,12 @@ class StorageService {
     localStorage.setItem(ACTIVE_PROJECT_ID_KEY, id);
   }
 
-  createFreshDunningKrugerProject(): VideoProject {
-    const fresh: VideoProject = {
-      ...JSON.parse(JSON.stringify(DUNNING_KRUGER_PROJECT)),
-      id: `dk_proj_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    this.saveProject(fresh);
-    this.setActiveProjectId(fresh.id);
-    return fresh;
-  }
-
-  private saveToStorage() {
+  private saveToStorage(): void {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.projects));
     } catch (e) {
-      console.warn('Storage quota exceeded, storing trimmed set', e);
+      console.error('Failed to save projects to localStorage', e);
     }
   }
 }
