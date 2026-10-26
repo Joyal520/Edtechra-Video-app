@@ -9,10 +9,16 @@
     <meta property="og:description" content="Create polished faceless educational and social-media videos with AI scripts, visual styles, voiceovers, captions, and real-time preview." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // When accessed on GitHub Pages with / (root) deployment, seamlessly redirect to the compiled /docs/ build
+      if (window.location.hostname.includes('github.io') && !window.location.pathname.includes('/docs/')) {
+        var basePath = window.location.pathname.replace(/\/+$/, '');
+        window.location.replace(basePath + '/docs/' + window.location.search + window.location.hash);
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
