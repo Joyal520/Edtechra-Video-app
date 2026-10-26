@@ -1,0 +1,6 @@
+{
+  "name": "Faceless - AI Video Creator",
+  "description": "Create polished faceless educational and social-media videos with AI scripts, visual styles, voiceovers, captions, and real-time preview.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
