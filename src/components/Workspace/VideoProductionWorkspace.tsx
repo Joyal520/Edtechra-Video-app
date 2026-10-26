@@ -10,7 +10,7 @@ import {
   fileToDataUrl,
 } from '../../services/imageGenerationService';
 import { voiceGenerationService } from '../../services/voiceGenerationService';
-import { storageService } from '../../services/storageService';
+import { storageService, DUNNING_KRUGER_PROJECT } from '../../services/storageService';
 import { MUSIC_TRACKS } from '../../services/musicService';
 import { VideoPreviewPlayer } from './VideoPreviewPlayer';
 import { SceneList } from './SceneList';
@@ -501,6 +501,17 @@ export const VideoProductionWorkspace: React.FC<VideoProductionWorkspaceProps> =
 
         {/* Center / Right: Tool buttons & Primary Actions */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {/* Quick Switch to Dunning-Kruger 5-Stage Preset */}
+          {project.id !== 'project_dunning_kruger_psychology' && (
+            <button
+              onClick={() => updateAndSaveProject(DUNNING_KRUGER_PROJECT)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-semibold text-amber-300 transition-colors"
+              title="Load 5-Stage Psychology Preset: Dunning-Kruger Effect"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>🧠 Load 5-Stage Psychology Preset</span>
+            </button>
+          )}
           {/* Music Drawer button */}
           <button
             onClick={() => setIsMusicDrawerOpen(true)}

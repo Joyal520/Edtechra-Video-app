@@ -17,6 +17,7 @@ import {
   imageGenerationService,
   fileToDataUrl,
   SAMPLE_IMAGES,
+  DUNNING_KRUGER_STAGES,
 } from '../../services/imageGenerationService';
 import {
   voiceGenerationService,
@@ -73,8 +74,8 @@ export const SceneEditorModal: React.FC<SceneEditorModalProps> = ({
   const [transition, setTransition] = useState<TransitionEffect>(scene.transition || 'crossfade');
 
   // Image source state
-  const [imageSourceTab, setImageSourceTab] = useState<'ai' | 'upload'>(
-    scene.imageSourceType === 'upload' ? 'upload' : 'ai'
+  const [imageSourceTab, setImageSourceTab] = useState<'ai' | 'upload' | 'stages'>(
+    scene.imageSourceType === 'upload' ? 'upload' : scene.imageSourceType === 'sample' ? 'stages' : 'ai'
   );
   const [imageUrl, setImageUrl] = useState<string | undefined>(scene.imageUrl);
   const [cropMode, setCropMode] = useState<ImageCropMode>(scene.cropMode || 'cover');
@@ -429,6 +430,17 @@ export const SceneEditorModal: React.FC<SceneEditorModalProps> = ({
               <div className="flex items-center bg-neutral-900 rounded-xl p-1 border border-neutral-800 text-xs">
                 <button
                   type="button"
+                  onClick={() => setImageSourceTab('stages')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                    imageSourceTab === 'stages'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  🧠 5 Stages Preset
+                </button>
+                <button
+                  type="button"
                   onClick={() => setImageSourceTab('ai')}
                   className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
                     imageSourceTab === 'ai'
@@ -436,7 +448,7 @@ export const SceneEditorModal: React.FC<SceneEditorModalProps> = ({
                       : 'text-neutral-400 hover:text-white'
                   }`}
                 >
-                  AI Generate (OpenAI)
+                  AI Generate
                 </button>
                 <button
                   type="button"
@@ -451,6 +463,79 @@ export const SceneEditorModal: React.FC<SceneEditorModalProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* TAB CONTENT: 5 STAGES PRESET */}
+            {imageSourceTab === 'stages' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs text-neutral-400">
+                  <span>Select any of the 5 Dunning–Kruger 9:16 vertical illustrations:</span>
+                  <span className="text-[11px] text-amber-400 font-semibold">Native 9:16 Artwork</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+                  {DUNNING_KRUGER_STAGES.map((stg) => {
+                    const isSelected = imageUrl === stg.url;
+                    return (
+                      <div
+                        key={stg.stage}
+                        onClick={() => {
+                          setImageUrl(stg.url);
+                          setImageSourceType('sample');
+                          setImageError(null);
+                        }}
+                        className={`group relative cursor-pointer rounded-xl border overflow-hidden p-2 flex flex-col justify-between transition-all ${
+                          isSelected
+                            ? 'bg-amber-950/40 border-amber-500 ring-2 ring-amber-500/50'
+                            : 'bg-neutral-900 border-neutral-800 hover:border-neutral-700'
+                        }`}
+                      >
+                        <div className="aspect-[9/16] w-full rounded-lg overflow-hidden bg-black/60 relative mb-2">
+                          <img
+                            src={stg.url}
+                            alt={stg.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                          <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono font-bold text-amber-300">
+                            #{stg.stage}
+                          </div>
+                          {isSelected && (
+                            <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-white">
+                              <Check className="w-3 h-3 stroke-[3]" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-1">
+                          <h4 className="text-[11px] font-bold text-white leading-tight line-clamp-1">
+                            {stg.title}
+                          </h4>
+                          <p className="text-[10px] text-neutral-400 leading-snug line-clamp-2">
+                            {stg.subtitle}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setImageUrl(stg.url);
+                            setImageSourceType('sample');
+                            setImageError(null);
+                          }}
+                          className={`mt-2 w-full py-1 rounded text-[10px] font-bold transition-colors ${
+                            isSelected
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
+                          }`}
+                        >
+                          {isSelected ? 'Active' : 'Select'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* TAB CONTENT: AI GENERATE */}
             {imageSourceTab === 'ai' && (

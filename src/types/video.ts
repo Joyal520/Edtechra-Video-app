@@ -1,3 +1,9 @@
+export interface RenderOptions {
+  resolution: '720p' | '1080p';
+  quality: 'standard' | 'high';
+  format: 'mp4';
+}
+
 export type AspectRatio = '9:16' | '16:9' | '1:1' | '4:5';
 
 export type VideoStyle =
@@ -62,14 +68,16 @@ export interface VoiceOption {
 }
 
 export type MusicCategory =
-  | 'Motivational'
+  | 'Calm'
+  | 'Inspirational'
+  | 'Positive'
   | 'Educational'
   | 'Cinematic'
+  | 'Soft'
+  | 'Motivational'
   | 'Emotional'
   | 'Mystery'
   | 'Funny'
-  | 'Horror'
-  | 'Calm'
   | 'Corporate';
 
 export interface MusicTrack {
@@ -79,6 +87,10 @@ export interface MusicTrack {
   duration: number; // in seconds
   bpm: number;
   energy: 'low' | 'medium' | 'high';
+  audioUrl?: string;
+  license?: string;
+  attribution?: string;
+  creator?: string;
   waveformPattern?: number[];
   toneType?: 'synth_chill' | 'lofi_study' | 'cinematic_strings' | 'mystery_ambient' | 'corporate_bright' | 'calm_piano';
 }

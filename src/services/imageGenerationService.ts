@@ -199,36 +199,74 @@ export function createProceduralSvg(params: GenerateImageParams): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+export const DUNNING_KRUGER_STAGES = [
+  {
+    stage: 1,
+    title: 'Stage 1: Beginner Overconfidence',
+    subtitle: 'Beginner feels very confident (Peak of Ignorance)',
+    url: '/samples/dunning_kruger_1.jpg',
+    narration: 'At first, beginners may feel very confident because they do not yet know how difficult the subject is.',
+  },
+  {
+    stage: 2,
+    title: 'Stage 2: Discovery of Difficulty',
+    subtitle: 'Discovers new things they still need to understand',
+    url: '/samples/dunning_kruger_2.jpg',
+    narration: 'But as they learn more, they discover many new things they still need to understand.',
+  },
+  {
+    stage: 3,
+    title: 'Stage 3: Confidence Drops',
+    subtitle: 'Realizes how much they do not know (Valley of Despair)',
+    url: '/samples/dunning_kruger_3.jpg',
+    narration: 'Then their confidence drops because they finally see how much they do not know.',
+  },
+  {
+    stage: 4,
+    title: 'Stage 4: Humility & Patience',
+    subtitle: 'Understands real learning takes time and patience',
+    url: '/samples/dunning_kruger_4.jpg',
+    narration: 'They become more humble and understand that real learning takes time, practice, and patience.',
+  },
+  {
+    stage: 5,
+    title: 'Stage 5: Sustainable Mastery',
+    subtitle: 'Real skill and confidence grow together realistically',
+    url: '/samples/dunning_kruger_5.jpg',
+    narration: 'With experience, their skill grows, and their confidence becomes more realistic.',
+  },
+];
+
 export const SAMPLE_IMAGES = [
   {
-    id: 'sample_1',
-    title: 'Scene 1: Desk Dilemma',
-    url: '/samples/sample_scene_1.jpg',
-    description: 'Minimal stickman studying late at night on glowing laptop with question mark',
+    id: 'dk_1',
+    title: 'Stage 1: Peak of Overconfidence',
+    url: '/samples/dunning_kruger_1.jpg',
+    description: 'Beginner feels very confident on the 9:16 vertical illustration',
   },
   {
-    id: 'sample_2',
-    title: 'Scene 2: Emotional Clash',
-    url: '/samples/sample_scene_2.jpg',
-    description: 'Split brain battle between limbic system and rational frontal cortex',
+    id: 'dk_2',
+    title: 'Stage 2: Discovering Complexity',
+    url: '/samples/dunning_kruger_2.jpg',
+    description: 'Discovers the subject is difficult on the 9:16 vertical illustration',
   },
   {
-    id: 'sample_3',
-    title: 'Scene 3: Dopamine Monkey',
-    url: '/samples/sample_scene_3.jpg',
-    description: 'Instant gratification monkey tempting the stickman away from goals',
+    id: 'dk_3',
+    title: 'Stage 3: Valley of Despair',
+    url: '/samples/dunning_kruger_3.jpg',
+    description: 'Confidence drops realizing how much they do not know',
   },
   {
-    id: 'sample_4',
-    title: 'Scene 4: Avoidance Threat',
-    url: '/samples/sample_scene_4.jpg',
-    description: 'Stickman running in comic fear from giant deadlines and tax folders',
+    id: 'dk_4',
+    title: 'Stage 4: Slope of Humility',
+    url: '/samples/dunning_kruger_4.jpg',
+    description: 'Becomes humble, continuing with patience and practice',
   },
   {
-    id: 'sample_5',
-    title: 'Scene 5: 2-Minute Victory',
-    url: '/samples/sample_scene_5.jpg',
-    description: 'Victorious stickman on summit with trophy celebrating the 2-minute rule',
+    id: 'dk_5',
+    title: 'Stage 5: Real Skill & Mastery',
+    url: '/samples/dunning_kruger_5.jpg',
+    description: 'Real skill and confidence grow together realistically',
   },
 ];
 

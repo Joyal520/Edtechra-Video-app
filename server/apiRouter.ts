@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
+import { renderVideoWithFfmpeg } from './ffmpegRenderer.ts';
 
 function getEnvKey(key: string): string {
   if (process.env[key]) return process.env[key]!.trim();
@@ -445,6 +446,26 @@ VOICE PERSONA: ${voicePersona}`;
           cached: false,
           provider: 'openai',
         });
+      }
+
+      // 5. Server-side high-quality FFmpeg MP4 Video Render
+      if (req.method === 'POST' && url === '/api/render-video') {
+        const body = await readJsonBody(req);
+        const { project, options } = body;
+
+        if (!project || !project.scenes || project.scenes.length === 0) {
+          return sendJson(res, 400, { error: 'Project and scenes are required for rendering.' });
+        }
+
+        const renderRes = await renderVideoWithFfmpeg(project, options || { resolution: '1080p', quality: 'high', format: 'mp4' });
+        if (renderRes.success) {
+          return sendJson(res, 200, renderRes);
+        } else {
+          return sendJson(res, 500, {
+            error: renderRes.error || 'FFmpeg rendering failed',
+            fallback: true,
+          });
+        }
       }
 
       return sendJson(res, 404, { error: `Endpoint ${url} not found` });

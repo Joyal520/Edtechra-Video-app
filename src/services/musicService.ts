@@ -1,18 +1,101 @@
 import { MusicCategory, MusicTrack } from '../types/video';
 
 export const MUSIC_CATEGORIES: MusicCategory[] = [
-  'Motivational',
+  'Calm',
+  'Inspirational',
+  'Positive',
   'Educational',
   'Cinematic',
+  'Soft',
+  'Motivational',
   'Emotional',
-  'Mystery',
-  'Funny',
-  'Horror',
-  'Calm',
-  'Corporate',
 ];
 
 export const MUSIC_TRACKS: MusicTrack[] = [
+  {
+    id: 'track_educational_01',
+    title: 'Focus Horizon (Study & Learn)',
+    category: 'Educational',
+    duration: 45,
+    bpm: 86,
+    energy: 'low',
+    audioUrl: '/music/educational-01.mp3',
+    creator: 'Faceless Studio Free Library',
+    license: 'Creative Commons 0 (CC0 Public Domain)',
+    attribution: 'None required (100% Free for Commercial & Educational use)',
+    toneType: 'lofi_study',
+    waveformPattern: [15, 30, 45, 60, 40, 50, 70, 85, 60, 45, 35, 55, 65, 80, 50, 30],
+  },
+  {
+    id: 'track_calm_01',
+    title: 'Peaceful Reflections',
+    category: 'Calm',
+    duration: 45,
+    bpm: 72,
+    energy: 'low',
+    audioUrl: '/music/calm-01.mp3',
+    creator: 'Faceless Studio Free Library',
+    license: 'Creative Commons 0 (CC0 Public Domain)',
+    attribution: 'None required (100% Free for Commercial & Educational use)',
+    toneType: 'calm_piano',
+    waveformPattern: [10, 20, 25, 40, 35, 50, 45, 30, 25, 35, 45, 40, 30, 20, 15, 10],
+  },
+  {
+    id: 'track_positive_01',
+    title: 'Morning Clarity & Growth',
+    category: 'Positive',
+    duration: 45,
+    bpm: 110,
+    energy: 'medium',
+    audioUrl: '/music/positive-01.mp3',
+    creator: 'Faceless Studio Free Library',
+    license: 'Creative Commons 0 (CC0 Public Domain)',
+    attribution: 'None required (100% Free for Commercial & Educational use)',
+    toneType: 'synth_chill',
+    waveformPattern: [25, 45, 65, 75, 60, 70, 85, 90, 70, 60, 80, 75, 55, 45, 35, 20],
+  },
+  {
+    id: 'track_inspirational_01',
+    title: 'Rising Potential',
+    category: 'Inspirational',
+    duration: 45,
+    bpm: 96,
+    energy: 'medium',
+    audioUrl: '/music/inspirational-01.mp3',
+    creator: 'Faceless Studio Free Library',
+    license: 'Creative Commons 0 (CC0 Public Domain)',
+    attribution: 'None required (100% Free for Commercial & Educational use)',
+    toneType: 'cinematic_strings',
+    waveformPattern: [20, 40, 60, 75, 85, 95, 90, 80, 65, 85, 90, 95, 80, 60, 40, 20],
+  },
+  {
+    id: 'track_cinematic_01',
+    title: 'Mind Symphony & Mystery',
+    category: 'Cinematic',
+    duration: 45,
+    bpm: 90,
+    energy: 'medium',
+    audioUrl: '/music/cinematic-01.mp3',
+    creator: 'Faceless Studio Free Library',
+    license: 'Creative Commons 0 (CC0 Public Domain)',
+    attribution: 'None required (100% Free for Commercial & Educational use)',
+    toneType: 'mystery_ambient',
+    waveformPattern: [15, 25, 35, 50, 45, 60, 55, 70, 65, 50, 45, 60, 40, 30, 20, 15],
+  },
+  {
+    id: 'track_soft_01',
+    title: 'Gentle Thought (Soft Acoustic)',
+    category: 'Soft',
+    duration: 45,
+    bpm: 78,
+    energy: 'low',
+    audioUrl: '/music/soft-01.mp3',
+    creator: 'Faceless Studio Free Library',
+    license: 'Creative Commons 0 (CC0 Public Domain)',
+    attribution: 'None required (100% Free for Commercial & Educational use)',
+    toneType: 'calm_piano',
+    waveformPattern: [20, 35, 45, 55, 50, 65, 60, 50, 45, 55, 65, 60, 45, 35, 25, 15],
+  },
   {
     id: 'track_lofi_focus',
     title: 'Midnight Coffee Study',
@@ -20,6 +103,9 @@ export const MUSIC_TRACKS: MusicTrack[] = [
     duration: 120,
     bpm: 82,
     energy: 'low',
+    creator: 'Faceless Studio Lo-Fi Unit',
+    license: 'Royalty-Free / CC-BY',
+    attribution: 'Faceless AI Video Creator',
     toneType: 'lofi_study',
     waveformPattern: [15, 30, 45, 60, 40, 50, 70, 85, 60, 45, 35, 55, 65, 80, 50, 30],
   },
@@ -30,82 +116,16 @@ export const MUSIC_TRACKS: MusicTrack[] = [
     duration: 90,
     bpm: 124,
     energy: 'high',
+    creator: 'Faceless Studio Electro Lab',
+    license: 'Royalty-Free / CC-BY',
+    attribution: 'Faceless AI Video Creator',
     toneType: 'synth_chill',
     waveformPattern: [30, 60, 80, 95, 75, 85, 90, 100, 85, 70, 90, 85, 65, 50, 40, 30],
   },
-  {
-    id: 'track_calm_zen',
-    title: 'Morning Dew Drops',
-    category: 'Calm',
-    duration: 150,
-    bpm: 72,
-    energy: 'low',
-    toneType: 'calm_piano',
-    waveformPattern: [10, 20, 25, 40, 35, 50, 45, 30, 25, 35, 45, 40, 30, 20, 15, 10],
-  },
-  {
-    id: 'track_cinematic_deep',
-    title: 'Aether Chronicles',
-    category: 'Cinematic',
-    duration: 180,
-    bpm: 95,
-    energy: 'medium',
-    toneType: 'cinematic_strings',
-    waveformPattern: [20, 40, 60, 75, 85, 95, 90, 80, 65, 85, 90, 95, 80, 60, 40, 20],
-  },
-  {
-    id: 'track_corporate_future',
-    title: 'Silicon Velocity',
-    category: 'Corporate',
-    duration: 110,
-    bpm: 118,
-    energy: 'medium',
-    toneType: 'corporate_bright',
-    waveformPattern: [25, 45, 65, 70, 60, 75, 80, 85, 70, 65, 80, 75, 55, 45, 35, 20],
-  },
-  {
-    id: 'track_mystery_shadows',
-    title: 'Curious Artifact',
-    category: 'Mystery',
-    duration: 135,
-    bpm: 88,
-    energy: 'low',
-    toneType: 'mystery_ambient',
-    waveformPattern: [15, 25, 35, 50, 45, 60, 55, 70, 65, 50, 45, 60, 40, 30, 20, 15],
-  },
-  {
-    id: 'track_emotional_memories',
-    title: 'Autumn Reverie',
-    category: 'Emotional',
-    duration: 140,
-    bpm: 76,
-    energy: 'low',
-    toneType: 'calm_piano',
-    waveformPattern: [20, 35, 45, 55, 50, 65, 60, 50, 45, 55, 65, 60, 45, 35, 25, 15],
-  },
-  {
-    id: 'track_funny_bounce',
-    title: 'Whimsical Mischief',
-    category: 'Funny',
-    duration: 95,
-    bpm: 130,
-    energy: 'high',
-    toneType: 'synth_chill',
-    waveformPattern: [40, 70, 50, 85, 60, 90, 65, 95, 70, 85, 60, 80, 55, 70, 45, 30],
-  },
-  {
-    id: 'track_horror_dread',
-    title: 'Subterranean Pulse',
-    category: 'Horror',
-    duration: 120,
-    bpm: 65,
-    energy: 'medium',
-    toneType: 'mystery_ambient',
-    waveformPattern: [10, 15, 30, 45, 70, 90, 60, 40, 80, 95, 70, 50, 35, 25, 15, 10],
-  },
 ];
 
-class SynthesizedAudioPlayer {
+class AudioMusicPlayer {
+  private audioElement: HTMLAudioElement | null = null;
   private ctx: AudioContext | null = null;
   private isPlaying = false;
   private currentTrackId: string | null = null;
@@ -131,14 +151,49 @@ class SynthesizedAudioPlayer {
 
   playTrack(track: MusicTrack, volume = 0.3) {
     this.stop();
-    this.initCtx();
-    if (!this.ctx) return;
-
     this.isPlaying = true;
     this.currentTrackId = track.id;
     this.onStateChange?.(true, track.id);
 
-    // Procedural musical progression based on track style
+    // If real audio file is available, play via HTML5 Audio
+    if (typeof window !== 'undefined' && track.audioUrl) {
+      try {
+        const audio = new Audio(track.audioUrl);
+        audio.volume = Math.max(0, Math.min(1, volume));
+        audio.loop = true;
+        audio.onended = () => {
+          if (!audio.loop) {
+            this.stop();
+          }
+        };
+        audio.onerror = () => {
+          console.warn('Real audio file playback failed, falling back to synthesis');
+          this.playSynthesizedFallback(track, volume);
+        };
+        audio.play().catch(() => {
+          this.playSynthesizedFallback(track, volume);
+        });
+        this.audioElement = audio;
+        return;
+      } catch {
+        // Fallback to synthesis
+      }
+    }
+
+    this.playSynthesizedFallback(track, volume);
+  }
+
+  setVolume(volume: number) {
+    const clamped = Math.max(0, Math.min(1, volume));
+    if (this.audioElement) {
+      this.audioElement.volume = clamped;
+    }
+  }
+
+  private playSynthesizedFallback(track: MusicTrack, volume: number) {
+    this.initCtx();
+    if (!this.ctx) return;
+
     let step = 0;
     const chords: number[][] =
       track.toneType === 'lofi_study'
@@ -149,7 +204,7 @@ class SynthesizedAudioPlayer {
         ? [[130.81, 261.63, 392.0], [146.83, 293.66, 440.0], [110.0, 220.0, 329.63], [174.61, 349.23, 523.25]]
         : [[196.0, 246.94, 293.66], [164.81, 196.0, 246.94], [146.83, 174.61, 220.0], [130.81, 164.81, 196.0]];
 
-    const beatInterval = (60 / track.bpm) * 1000;
+    const beatInterval = (60 / (track.bpm || 80)) * 1000;
 
     const playChord = () => {
       if (!this.isPlaying || !this.ctx) return;
@@ -185,10 +240,20 @@ class SynthesizedAudioPlayer {
   stop() {
     this.isPlaying = false;
     this.currentTrackId = null;
+
+    if (this.audioElement) {
+      try {
+        this.audioElement.pause();
+        this.audioElement.currentTime = 0;
+      } catch {}
+      this.audioElement = null;
+    }
+
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
+
     this.activeNodes.forEach((node) => {
       try {
         if ('stop' in node && typeof (node as any).stop === 'function') {
@@ -205,4 +270,4 @@ class SynthesizedAudioPlayer {
   }
 }
 
-export const musicPlayer = new SynthesizedAudioPlayer();
+export const musicPlayer = new AudioMusicPlayer();

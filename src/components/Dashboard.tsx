@@ -4,6 +4,7 @@ import {
   VideoStyle,
   AspectRatio,
 } from '../types/video';
+import { DUNNING_KRUGER_PROJECT } from '../services/storageService';
 import {
   Plus,
   Search,
@@ -18,6 +19,8 @@ import {
   Zap,
   BookOpen,
   Film,
+  Brain,
+  ArrowRight,
 } from 'lucide-react';
 
 interface TemplateStarter {
@@ -31,6 +34,15 @@ interface TemplateStarter {
 }
 
 const TEMPLATE_STARTERS: TemplateStarter[] = [
+  {
+    title: 'The Dunning–Kruger Effect (5 Stages)',
+    topic: 'The 5 psychological stages of learning: from beginner overconfidence to the valley of despair, humility, and true realistic mastery.',
+    style: 'stickman',
+    aspectRatio: '9:16',
+    duration: 28,
+    scenesCount: 5,
+    category: 'Psychology',
+  },
   {
     title: '5 Daily Habits for Hyper-Focus',
     topic: '5 daily scientific habits that elite performers use to achieve uninterrupted deep focus, including the 90-minute ultradian rhythm and phone quarantines.',
@@ -255,6 +267,56 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* Featured Dunning-Kruger Psychology Video Quick Launch */}
+        {filterTab !== 'templates' && !searchQuery && (
+          <section className="mt-6 mb-8 rounded-3xl bg-gradient-to-r from-indigo-950/70 via-neutral-900 to-neutral-900 border border-indigo-500/30 p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+              <div className="space-y-2 max-w-xl">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-300 text-xs font-bold">
+                  <Brain className="w-3.5 h-3.5" /> 5-Stage Psychology Reel Preset
+                </div>
+                <h3 className="text-xl sm:text-2xl font-extrabold text-white">
+                  The Dunning–Kruger Effect: 5 Stages of Learning
+                </h3>
+                <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                  Pre-configured with all <strong>5 vertical 9:16 stage illustrations</strong>, simple A1–A2 English voiceover narration, auto-ducked study music, and keyframe animations.
+                </p>
+
+                {/* 5 Thumbnails Preview */}
+                <div className="flex items-center gap-2 pt-2">
+                  {[1, 2, 3, 4, 5].map((num) => (
+                    <div key={num} className="relative w-11 h-16 rounded-lg overflow-hidden border border-neutral-700 bg-neutral-950 shrink-0">
+                      <img
+                        src={`/samples/dunning_kruger_${num}.jpg`}
+                        alt={`Stage ${num}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-0 inset-x-0 bg-black/70 text-[9px] font-mono text-center text-white font-bold py-0.5">
+                        #{num}
+                      </div>
+                    </div>
+                  ))}
+                  <span className="text-xs text-neutral-400 pl-2 hidden sm:inline">
+                    5 vertical scenes ready to preview & export
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
+                <button
+                  onClick={() => onOpenProject(DUNNING_KRUGER_PROJECT)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Play className="w-4 h-4 fill-white" />
+                  <span>Open 5-Stage Project</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </section>
         )}

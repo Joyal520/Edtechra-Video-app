@@ -8,6 +8,7 @@ import {
 import { VOICE_OPTIONS, voiceGenerationService } from '../../services/voiceGenerationService';
 import { generateAIVideoPrompt } from '../../services/promptGenerator';
 import { aiPlannerService } from '../../services/aiPlannerService';
+import { DUNNING_KRUGER_PROJECT } from '../../services/storageService';
 import {
   Sparkles,
   ArrowRight,
@@ -382,12 +383,29 @@ export const NewProjectWizard: React.FC<NewProjectWizardProps> = ({
 
               {/* Quick Prompt Starters */}
               <div className="flex flex-wrap items-center gap-2 pt-1">
-                <span className="text-xs text-neutral-500">Quick starters:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onDirectCreateProject) {
+                      onDirectCreateProject(DUNNING_KRUGER_PROJECT);
+                    } else {
+                      setTopic('The Dunning–Kruger Effect: The 5 Stages of Learning');
+                      setSelectedStyle('stickman');
+                      setAspectRatio('9:16');
+                      setSceneCount(5);
+                      setTargetDuration(28);
+                    }
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600/30 border border-indigo-500/50 text-indigo-200 font-bold hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-1.5 shadow-sm"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>🧠 5-Stage Psychology Preset: Dunning–Kruger Effect</span>
+                </button>
+                <span className="text-xs text-neutral-500 pl-1">Other starters:</span>
                 {[
                   'Why deep work is the superpower of the 21st century',
                   'The psychological illusion of luck',
                   'How dopamine loops control social media habits',
-                  'The 2-minute rule that beats procrastination',
                 ].map((s, idx) => (
                   <button
                     key={idx}

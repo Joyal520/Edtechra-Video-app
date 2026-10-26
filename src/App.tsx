@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { VideoProject, VideoStyle, AspectRatio } from './types/video';
-import { storageService, SEED_DEMO_PROJECT } from './services/storageService';
+import { storageService, SEED_DEMO_PROJECT, DUNNING_KRUGER_PROJECT } from './services/storageService';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
 import { NewProjectWizard } from './components/Wizard/NewProjectWizard';
@@ -80,6 +80,10 @@ export default function App() {
   };
 
   const handleSelectTemplate = (tmpl: any) => {
+    if (tmpl.title.includes('Dunning')) {
+      handleOpenProject(DUNNING_KRUGER_PROJECT);
+      return;
+    }
     setWizardDraft({
       topic: tmpl.topic,
       style: tmpl.style,

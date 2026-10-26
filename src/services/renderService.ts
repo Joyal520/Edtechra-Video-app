@@ -40,8 +40,36 @@ export class ClientVideoRenderService implements VideoRenderService {
       onProgress?.({ stage, percent, message });
     };
 
-    notify('preparing', 10, 'Initializing video compiler engine...');
-    await new Promise((r) => setTimeout(r, 200));
+    notify('preparing', 12, 'Initializing video compiler engine...');
+
+    // Attempt Server-Side High-Fidelity FFmpeg Rendering first
+    try {
+      notify('assets', 25, 'Rasterizing 9:16 vertical scenes and loading audio stems...');
+      const serverRes = await fetch('/api/render-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project, options }),
+      });
+
+      if (serverRes.ok) {
+        notify('voiceover', 48, '✓ Synchronized OpenAI voiceover speech track');
+        notify('music', 68, '✓ Mixed background music with smart ducking');
+        notify('rendering', 88, 'Encoding 1080×1920 MP4 (H.264 / AAC broadcast format)...');
+        const data = await serverRes.json();
+        if (data.success && data.downloadUrl) {
+          notify('completed', 100, 'MP4 video ready for download!');
+          return {
+            downloadUrl: data.downloadUrl,
+            filename: data.filename,
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Server FFmpeg render unavailable, continuing with client canvas engine', e);
+    }
+
+    notify('preparing', 20, 'Compiling in-browser canvas renderer...');
+    await new Promise((r) => setTimeout(r, 150));
 
     // Determine dimensions
     const isVertical = project.project.aspect_ratio === '9:16';
