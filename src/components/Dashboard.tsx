@@ -292,7 +292,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   {[1, 2, 3, 4, 5].map((num) => (
                     <div key={num} className="relative w-11 h-16 rounded-lg overflow-hidden border border-neutral-700 bg-neutral-950 shrink-0">
                       <img
-                        src={`/samples/dunning_kruger_${num}.jpg`}
+                        src={`./samples/dunning_kruger_${num}.jpg`}
                         alt={`Stage ${num}`}
                         className="w-full h-full object-cover"
                       />
