@@ -661,6 +661,8 @@ export const VideoProductionWorkspace: React.FC<VideoProductionWorkspaceProps> =
             onSelectScene={handleSelectScene}
             onDurationChange={handleDurationChange}
             onSeek={(t) => setPreviewTime(t)}
+            onOpenMusicLibrary={() => setIsMusicDrawerOpen(true)}
+            onOpenCaptionsDrawer={() => setIsCaptionsDrawerOpen(true)}
           />
         </section>
       </main>
@@ -683,6 +685,7 @@ export const VideoProductionWorkspace: React.FC<VideoProductionWorkspaceProps> =
       <MusicDrawer
         selectedTrackId={project.project.musicTrackId}
         musicVolume={project.project.musicVolume}
+        voiceVolume={project.project.voiceVolume ?? 1.0}
         isOpen={isMusicDrawerOpen}
         onClose={() => setIsMusicDrawerOpen(false)}
         onSelectTrack={(trackId) => {
@@ -700,6 +703,15 @@ export const VideoProductionWorkspace: React.FC<VideoProductionWorkspaceProps> =
             project: {
               ...project.project,
               musicVolume: newVol,
+            },
+          });
+        }}
+        onVoiceVolumeChange={(newVoiceVol) => {
+          updateAndSaveProject({
+            ...project,
+            project: {
+              ...project.project,
+              voiceVolume: newVoiceVol,
             },
           });
         }}

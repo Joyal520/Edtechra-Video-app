@@ -13,6 +13,7 @@ export interface TimelineSegment {
   start: number;
   end: number;
   duration: number;
+  speechDuration: number;
   transitionType: TransitionEffect;
   transitionDuration: number;
   animationType: AnimationEffect;
@@ -32,7 +33,7 @@ export interface FrameState {
   prevProgress: number;
   isTransitioning: boolean;
   transitionProgress: number;
-  glitchIntensity: number; // 0.0 to 1.0 when an intentional story glitch is active
+  glitchIntensity: number; // 0.0 to 1.0 when a subtle story glitch is active
 }
 
 export interface CameraTransform {
@@ -42,8 +43,27 @@ export interface CameraTransform {
   rotateDeg: number;
 }
 
+export interface CaptionWordToken {
+  text: string; // Uppercase display word (with punctuation)
+  cleanWord: string; // Stripped alphanumeric uppercase token
+  isEmphasized: boolean; // True if important story word/phrase
+  startTime: number; // Absolute master timeline start (s)
+  endTime: number; // Absolute master timeline end (s)
+}
+
+export interface CaptionChunk {
+  sceneIndex: number;
+  chunkIndex: number;
+  words: CaptionWordToken[];
+  lines: CaptionWordToken[][]; // 1 or 2 balanced lines within mobile safe margins
+  text: string;
+  hasEmphasis: boolean;
+  startTime: number;
+  endTime: number;
+}
+
 // Known calibrated voiceover audio durations (in seconds) for existing assets
-const KNOWN_VOICE_DURATIONS: Record<string, number> = {
+export const KNOWN_VOICE_DURATIONS: Record<string, number> = {
   'voice_0e9dd556aaacb4468bc239e26660d8b0.mp3': 6.46,
   'voice_618d84f5e8be7b0436b8833f5de2bc47.mp3': 5.30,
   'voice_400691df7b30d0d2d6ce723f525751a5.mp3': 5.06,
@@ -56,25 +76,55 @@ const KNOWN_VOICE_DURATIONS: Record<string, number> = {
   'mothman_voice_5.mp3': 10.90,
 };
 
-// High-impact keywords that receive visual emphasis in creepy/story captions
+// Multi-word important phrases that should stay together and receive visual emphasis
+const EMPHASIS_PHRASES: string[][] = [
+  ['STRANGE', 'FIGURE'],
+  ['DARK', 'FIGURE'],
+  ['TALL', 'DARK', 'FIGURE'],
+  ['RED', 'EYES'],
+  ['HUGE', 'WINGS'],
+  ['NOT', 'HUMAN'],
+  ['STRANGE', 'CREATURE'],
+  ['SOMETHING', 'TERRIBLE'],
+  ['DECEMBER', '15', '1967'],
+  ['SILVER', 'BRIDGE'],
+  ['FORTY-SIX', 'PEOPLE'],
+  ['46', 'PEOPLE'],
+  ['PEOPLE', 'DIED'],
+  ['NOBODY', 'KNOWS'],
+  ['THE', 'MYSTERY', 'REMAINS'],
+  ['MOTHMAN', 'MYSTERY'],
+  ['STILL', 'WATCHING'],
+];
+
+// Multi-word collocations that should be kept on the same caption chunk (even if not highlighted)
+const COHESIVE_COLLOCATIONS: string[][] = [
+  ...EMPHASIS_PHRASES,
+  ['IN', '1966'],
+  ['POINT', 'PLEASANT'],
+  ['WEST', 'VIRGINIA'],
+  ['TWO', 'YOUNG', 'COUPLES'],
+  ['OLD', 'FACTORY'],
+  ['LATE', 'AT', 'NIGHT'],
+  ['VERY', 'FAST'],
+  ['IN', 'THE', 'DARKNESS'],
+  ['STRANGE', 'ANIMAL'],
+  ['CANNOT', 'EXPLAIN'],
+  ['STILL', 'ALIVE'],
+];
+
+// Single-word important story keywords
 const EMPHASIS_KEYWORDS = new Set([
   '1966',
   '1967',
   'STRANGE',
-  'DARK',
-  'FIGURE',
-  'RED',
-  'EYES',
-  'WINGS',
   'TERRIFIED',
   'CREATURE',
-  'HUMAN',
   'DARKNESS',
   'MOTHMAN',
   'WARNING',
   'TERRIBLE',
   'AFRAID',
-  'DECEMBER',
   'SILVER',
   'BRIDGE',
   'COLLAPSED',
@@ -84,7 +134,56 @@ const EMPHASIS_KEYWORDS = new Set([
   'DISASTER',
   'MYSTERY',
   'WATCHING',
+  'OVERCONFIDENT',
+  'IGNORANCE',
+  'DESPAIR',
+  'HUMBLE',
+  'MASTERY',
 ]);
+
+// Words that naturally start a new phrase if current chunk already has >= 2 words
+const CLAUSE_STARTERS = new Set([
+  'IN',
+  'NEAR',
+  'AT',
+  'BY',
+  'WHEN',
+  'AS',
+  'UNTIL',
+  'BECAUSE',
+  'THAT',
+  'WHO',
+  'WITH',
+  'FROM',
+  'OVER',
+  'ABOVE',
+  'INTO',
+  'ACROSS',
+  'AFTER',
+  'BEFORE',
+  'BUT',
+  'AND',
+  'OR',
+  'TO',
+]);
+
+export function cleanWordToken(word: string): string {
+  return word.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+}
+
+export function getKnownSpeechDuration(scene: Scene): number {
+  if (scene.audioDuration && scene.audioDuration > 0) {
+    return scene.audioDuration;
+  }
+  if (scene.audioUrl) {
+    for (const [filename, knownDur] of Object.entries(KNOWN_VOICE_DURATIONS)) {
+      if (scene.audioUrl.includes(filename)) {
+        return knownDur;
+      }
+    }
+  }
+  return Math.max(2.2, (scene.duration || 5.5) - 0.3);
+}
 
 export function getCalibratedSceneDuration(scene: Scene): number {
   let dur = scene.duration || 5.5;
@@ -103,8 +202,8 @@ export function getCalibratedSceneDuration(scene: Scene): number {
 }
 
 /**
- * Compute intentional story-driven glitch intensity (0.0 -> 1.0) at a given scene progress.
- * Glitches only fire briefly at key narrative moments — never continuously.
+ * Compute subtle, short story-driven glitch intensity (0.0 -> 0.55) at key narrative peaks.
+ * Per Requirement 12: Glitches are kept subtle and brief (~0.28s–0.35s) and are NEVER placed on every scene change.
  */
 export function computeStoryGlitchIntensity(
   sceneIndex: number,
@@ -114,32 +213,26 @@ export function computeStoryGlitchIntensity(
   transitionType: TransitionEffect
 ): number {
   if (isTransitioning && transitionType === 'glitch') {
-    return 0.85;
+    return 0.45;
   }
   if (!glitchEffect || glitchEffect === 'none') return 0;
 
-  // Story-calibrated glitch windows per scene:
-  // Scene 1: Brief glitch when the tall dark figure / red eyes appear (~0.56 - 0.67)
-  // Scene 2: Small glitch around "red eyes seemed to shine in the darkness" (~0.46 - 0.57)
-  // Scene 3: Signal distortion when the name "Mothman" appears (~0.25 - 0.37)
-  // Scene 4: Dramatic glitch around Silver Bridge collapse / 46 people (~0.28 - 0.44)
-  // Scene 5: Final glitch/flicker before the ending (~0.83 - 0.96)
+  // Short, tasteful documentary glitch windows (~0.30s each) only on key story moments:
+  // Scene 1: Brief RGB split when "tall dark figure / red eyes" appears (~0.58 - 0.608)
+  // Scene 2: Brief flicker when "red eyes seemed to shine" (~0.48 - 0.508)
+  // Scene 3: No glitch burst (keep documentary restraint)
+  // Scene 4: Brief distortion when "Silver Bridge collapsed" (~0.31 - 0.340)
+  // Scene 5: Brief VHS flicker at final "watching from the darkness" (~0.88 - 0.910)
   const windows: Array<[number, number, number]> =
     sceneIndex === 0
-      ? [[0.56, 0.67, 0.75]]
+      ? [[0.58, 0.608, 0.48]]
       : sceneIndex === 1
-      ? [[0.46, 0.57, 0.65]]
+      ? [[0.48, 0.508, 0.42]]
       : sceneIndex === 2
-      ? [[0.25, 0.37, 0.8]]
+      ? []
       : sceneIndex === 3
-      ? [
-          [0.28, 0.43, 0.95],
-          [0.82, 0.90, 0.6],
-        ]
-      : [
-          [0.35, 0.43, 0.55],
-          [0.83, 0.96, 0.9],
-        ];
+      ? [[0.31, 0.34, 0.52]]
+      : [[0.88, 0.91, 0.48]];
 
   for (const [startP, endP, peak] of windows) {
     if (progress >= startP && progress <= endP) {
@@ -156,13 +249,14 @@ export function computeStoryGlitchIntensity(
  * Single Source of Truth: Build the continuous Master Timeline for a project.
  */
 export function buildMasterTimeline(project: VideoProject): MasterTimeline {
-  const transitionDuration = 0.48; // 480ms cinematic transition overlap
+  const transitionDuration = 0.48; // 480ms smooth cinematic transition
   const segments: TimelineSegment[] = [];
   let accumulated = 0;
 
   for (let i = 0; i < project.scenes.length; i++) {
     const sc = project.scenes[i];
     const duration = getCalibratedSceneDuration(sc);
+    const speechDuration = Math.min(duration - 0.15, getKnownSpeechDuration(sc));
     const start = Number(accumulated.toFixed(3));
     const end = Number((accumulated + duration).toFixed(3));
 
@@ -172,6 +266,7 @@ export function buildMasterTimeline(project: VideoProject): MasterTimeline {
       start,
       end,
       duration,
+      speechDuration,
       transitionType: sc.transition || 'crossfade',
       transitionDuration: i === 0 ? 0 : Math.min(transitionDuration, duration * 0.25),
       animationType: sc.animation || 'slow_zoom_in',
@@ -187,6 +282,270 @@ export function buildMasterTimeline(project: VideoProject): MasterTimeline {
     transitionDuration,
     segments,
   };
+}
+
+/**
+ * Check if a word is an important story keyword that should receive stronger visual emphasis.
+ */
+export function isEmphasizedWord(word: string): boolean {
+  const cleaned = cleanWordToken(word);
+  return EMPHASIS_KEYWORDS.has(cleaned);
+}
+
+/**
+ * Identify which word indices in a word array belong to emphasized words or multi-word emphasis phrases.
+ */
+function markEmphasizedWords(rawWords: string[]): boolean[] {
+  const cleanTokens = rawWords.map((w) => cleanWordToken(w));
+  const flags = rawWords.map((w) => isEmphasizedWord(w));
+
+  for (const phrase of EMPHASIS_PHRASES) {
+    const pLen = phrase.length;
+    for (let i = 0; i <= cleanTokens.length - pLen; i++) {
+      let match = true;
+      for (let j = 0; j < pLen; j++) {
+        if (cleanTokens[i + j] !== phrase[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        for (let j = 0; j < pLen; j++) {
+          flags[i + j] = true;
+        }
+      }
+    }
+  }
+  return flags;
+}
+
+/**
+ * Check if `cleanTokens[idx]` and `cleanTokens[idx + 1]` belong to a cohesive collocation
+ * that should NOT be split across two different caption chunks.
+ */
+function isCohesivePair(cleanTokens: string[], idx: number): boolean {
+  if (idx < 0 || idx + 1 >= cleanTokens.length) return false;
+  const a = cleanTokens[idx];
+  const b = cleanTokens[idx + 1];
+  for (const coll of COHESIVE_COLLOCATIONS) {
+    for (let k = 0; k < coll.length - 1; k++) {
+      if (coll[k] === a && coll[k + 1] === b) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Intelligent YouTube Shorts / Documentary Caption Segmenter.
+ * Breaks a narration sentence into short, punchy 2-3 word readable chunks (max 4 short words),
+ * respecting natural punctuation, prepositional clause starts, and keeping key collocations together.
+ */
+export function splitNarrationIntoPhrases(narration: string, maxWords = 3): string[][] {
+  const rawWords = narration.trim().split(/\s+/).filter(Boolean);
+  if (rawWords.length === 0) return [];
+
+  const cleanTokens = rawWords.map((w) => cleanWordToken(w));
+  const targetMax = Math.max(2, Math.min(4, maxWords));
+  const phrases: string[][] = [];
+  let current: string[] = [];
+
+  for (let i = 0; i < rawWords.length; i++) {
+    const word = rawWords[i];
+    const clean = cleanTokens[i];
+    const nextClean = i + 1 < cleanTokens.length ? cleanTokens[i + 1] : '';
+
+    // If current already has >= 2 words and this word starts a new clause (and wasn't glued to previous), flush first
+    if (
+      current.length >= 2 &&
+      CLAUSE_STARTERS.has(clean) &&
+      !isCohesivePair(cleanTokens, i - 1)
+    ) {
+      phrases.push(current);
+      current = [];
+    }
+
+    current.push(word);
+
+    const endsStrongPunct = /[.!?;:]$/.test(word);
+    const endsComma = /,$/.test(word);
+    const currentChars = current.join(' ').length;
+
+    // Never split in the middle of a cohesive collocation (e.g. "DECEMBER 15, 1967" or "RED EYES")
+    const gluedToNext = isCohesivePair(cleanTokens, i);
+
+    if (endsStrongPunct && !gluedToNext) {
+      phrases.push(current);
+      current = [];
+    } else if (endsComma && !gluedToNext && current.length >= 1) {
+      phrases.push(current);
+      current = [];
+    } else if (!gluedToNext) {
+      if (
+        current.length >= targetMax ||
+        (current.length >= 2 && currentChars >= 16) ||
+        (current.length >= 2 && CLAUSE_STARTERS.has(nextClean))
+      ) {
+        phrases.push(current);
+        current = [];
+      }
+    } else if (current.length >= 4) {
+      phrases.push(current);
+      current = [];
+    }
+  }
+
+  if (current.length > 0) {
+    phrases.push(current);
+  }
+
+  return phrases;
+}
+
+/**
+ * Split a chunk's word tokens into 1 or 2 balanced lines so captions never exceed mobile safe width.
+ */
+function splitChunkIntoBalancedLines(words: CaptionWordToken[]): CaptionWordToken[][] {
+  const totalChars = words.reduce((acc, w) => acc + w.text.length, 0) + Math.max(0, words.length - 1);
+  if (words.length <= 3 && totalChars <= 20) {
+    return [words];
+  }
+  if (words.length <= 1) {
+    return [words];
+  }
+  // Find split index that balances character length between line 1 and line 2
+  let bestSplit = Math.ceil(words.length / 2);
+  let bestDiff = Infinity;
+  for (let s = 1; s < words.length; s++) {
+    const leftLen = words.slice(0, s).reduce((a, w) => a + w.text.length, 0);
+    const rightLen = words.slice(s).reduce((a, w) => a + w.text.length, 0);
+    const diff = Math.abs(leftLen - rightLen);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestSplit = s;
+    }
+  }
+  return [words.slice(0, bestSplit), words.slice(bestSplit)];
+}
+
+/**
+ * Single Source of Truth for Synchronized Captions across BOTH Browser Preview and FFmpeg Export.
+ * Uses exact scene narration timing + syllable/punctuation pause weighting.
+ */
+export function buildMasterCaptions(
+  project: VideoProject,
+  timeline: MasterTimeline
+): CaptionChunk[] {
+  if (project.captions?.enabled === false) return [];
+
+  const maxWords = Math.min(4, Math.max(2, project.captions?.maxWordsPerLine || 3));
+  const allChunks: CaptionChunk[] = [];
+
+  for (const seg of timeline.segments) {
+    const narration = seg.scene.narration?.trim();
+    if (!narration) continue;
+
+    const rawPhrases = splitNarrationIntoPhrases(narration, maxWords);
+    if (rawPhrases.length === 0) continue;
+
+    const flatWords = rawPhrases.flat();
+    const emphasisFlags = markEmphasizedWords(flatWords);
+
+    // Compute natural speech timing weight for each word (characters + punctuation pause weight)
+    const wordWeights = flatWords.map((w) => {
+      const baseLen = Math.max(2, cleanWordToken(w).length);
+      const endsPeriod = /[.!?]$/.test(w);
+      const endsComma = /[,;:]$/.test(w);
+      return baseLen + (endsPeriod ? 5.5 : endsComma ? 3.0 : 0.8);
+    });
+    const totalWeight = wordWeights.reduce((a, b) => a + b, 0) || 1;
+
+    // Speech starts at seg.start + 0.06s and runs for seg.speechDuration
+    const speechStart = seg.start + 0.06;
+    const speechWindow = Math.max(1.5, seg.speechDuration - 0.06);
+
+    let weightCursor = 0;
+    let globalWordIdx = 0;
+
+    for (let cIdx = 0; cIdx < rawPhrases.length; cIdx++) {
+      const phraseWords = rawPhrases[cIdx];
+      const tokens: CaptionWordToken[] = [];
+
+      for (const w of phraseWords) {
+        const wWeight = wordWeights[globalWordIdx];
+        const wStart = speechStart + (weightCursor / totalWeight) * speechWindow;
+        weightCursor += wWeight;
+        const wEnd = speechStart + (weightCursor / totalWeight) * speechWindow;
+
+        tokens.push({
+          text: w.toUpperCase(),
+          cleanWord: cleanWordToken(w),
+          isEmphasized: emphasisFlags[globalWordIdx],
+          startTime: Number(wStart.toFixed(3)),
+          endTime: Number(wEnd.toFixed(3)),
+        });
+
+        globalWordIdx++;
+      }
+
+      if (tokens.length > 0) {
+        const chunkStart = tokens[0].startTime;
+        const chunkEnd = tokens[tokens.length - 1].endTime;
+        allChunks.push({
+          sceneIndex: seg.index,
+          chunkIndex: cIdx,
+          words: tokens,
+          lines: splitChunkIntoBalancedLines(tokens),
+          text: tokens.map((t) => t.text).join(' '),
+          hasEmphasis: tokens.some((t) => t.isEmphasized),
+          startTime: chunkStart,
+          endTime: chunkEnd,
+        });
+      }
+    }
+  }
+
+  return allChunks;
+}
+
+/**
+ * Find the active caption chunk and active word at any master timeline timestamp `currentTime`.
+ */
+export function getActiveCaptionAtTime(
+  chunks: CaptionChunk[],
+  currentTime: number
+): {
+  chunk: CaptionChunk;
+  chunkProgress: number;
+  elapsedInChunk: number;
+  activeWordIndex: number;
+} | null {
+  if (chunks.length === 0) return null;
+
+  for (const chunk of chunks) {
+    if (currentTime >= chunk.startTime && currentTime <= chunk.endTime + 0.08) {
+      const dur = Math.max(0.15, chunk.endTime - chunk.startTime);
+      const elapsed = Math.max(0, currentTime - chunk.startTime);
+      const progress = Math.min(1, elapsed / dur);
+
+      let activeWordIndex = 0;
+      for (let i = 0; i < chunk.words.length; i++) {
+        if (currentTime >= chunk.words[i].startTime) {
+          activeWordIndex = i;
+        }
+      }
+
+      return {
+        chunk,
+        chunkProgress: progress,
+        elapsedInChunk: elapsed,
+        activeWordIndex,
+      };
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -415,13 +774,12 @@ function drawSceneVisualLayer(
     ctx.drawImage(img, drawX, drawY, drawW, drawH);
     ctx.restore();
 
-    // Layer 3 (Foreground Parallax Atmosphere — faster movement for depth)
+    // Layer 3 (Foreground Parallax Atmosphere — subtle drifting mist & dust motes)
     if (isCreepyStyle || (scene.parallaxIntensity && scene.parallaxIntensity > 0)) {
-      const fgTx = txPx * 1.75 + (animProgress - 0.5) * width * 0.06;
-      const fgTy = tyPx * 1.45;
+      const fgTx = txPx * 1.65 + (animProgress - 0.5) * width * 0.05;
+      const fgTy = tyPx * 1.35;
 
       ctx.save();
-      // Drifting volumetric fog bands in foreground
       const fogGrad1 = ctx.createRadialGradient(
         width * 0.35 + fgTx,
         height * 0.65 + fgTy,
@@ -430,60 +788,31 @@ function drawSceneVisualLayer(
         height * 0.65 + fgTy,
         width * 0.65
       );
-      fogGrad1.addColorStop(0, 'rgba(148, 163, 184, 0.14)');
-      fogGrad1.addColorStop(0.6, 'rgba(71, 85, 105, 0.06)');
+      fogGrad1.addColorStop(0, 'rgba(148, 163, 184, 0.11)');
+      fogGrad1.addColorStop(0.6, 'rgba(71, 85, 105, 0.05)');
       fogGrad1.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = fogGrad1;
       ctx.fillRect(0, 0, width, height);
 
-      const fogGrad2 = ctx.createRadialGradient(
-        width * 0.7 - fgTx * 1.1,
-        height * 0.38 - fgTy,
-        width * 0.04,
-        width * 0.7 - fgTx * 1.1,
-        height * 0.38 - fgTy,
-        width * 0.55
-      );
-      fogGrad2.addColorStop(0, 'rgba(220, 38, 38, 0.07)'); // subtle eerie crimson mist
-      fogGrad2.addColorStop(0.5, 'rgba(30, 41, 59, 0.08)');
-      fogGrad2.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = fogGrad2;
-      ctx.fillRect(0, 0, width, height);
-
       // Subtle foreground dust motes drifting across lens
-      for (let m = 0; m < 14; m++) {
+      for (let m = 0; m < 10; m++) {
         const seed = (scene.id * 37 + m * 73) % 100;
         const baseX = ((seed * 13) % 100) / 100;
         const baseY = ((seed * 29) % 100) / 100;
         const px =
-          ((baseX * width + fgTx * (1.2 + (m % 3) * 0.4) + animProgress * 55) % width + width) %
+          ((baseX * width + fgTx * (1.2 + (m % 3) * 0.4) + animProgress * 45) % width + width) %
           width;
         const py =
-          ((baseY * height + fgTy - animProgress * (30 + (m % 4) * 12)) % height + height) %
+          ((baseY * height + fgTy - animProgress * (25 + (m % 4) * 10)) % height + height) %
           height;
-        const radius = (1.5 + (m % 3) * 1.2) * (width / 1080);
+        const radius = (1.3 + (m % 3) * 1.0) * (width / 1080);
 
         ctx.fillStyle =
-          m % 5 === 0 ? 'rgba(248, 113, 113, 0.25)' : 'rgba(226, 232, 240, 0.18)';
+          m % 5 === 0 ? 'rgba(248, 113, 113, 0.20)' : 'rgba(226, 232, 240, 0.14)';
         ctx.beginPath();
         ctx.arc(px, py, radius, 0, Math.PI * 2);
         ctx.fill();
       }
-
-      // Cinematic dark vignette around edges
-      const vig = ctx.createRadialGradient(
-        width / 2,
-        height * 0.45,
-        width * 0.28,
-        width / 2,
-        height * 0.5,
-        height * 0.68
-      );
-      vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
-      vig.addColorStop(0.75, 'rgba(2, 6, 23, 0.28)');
-      vig.addColorStop(1, 'rgba(0, 0, 0, 0.72)');
-      ctx.fillStyle = vig;
-      ctx.fillRect(0, 0, width, height);
       ctx.restore();
     }
   } else {
@@ -495,7 +824,7 @@ function drawSceneVisualLayer(
 }
 
 /**
- * Render tasteful creepy glitch effects (RGB split, VHS scanlines, horizontal slice displacement, static flicker)
+ * Render subtle, restrained documentary glitch effects (short RGB split, brief flicker, subtle static)
  * when `glitchIntensity > 0`.
  */
 function renderGlitchEffects(
@@ -510,15 +839,18 @@ function renderGlitchEffects(
 
   ctx.save();
   const scaleFactor = width / 1080;
-  const shiftPx = Math.round(intensity * 18 * scaleFactor * Math.sin(currentTime * 65));
+  const shiftPx = Math.round(intensity * 9 * scaleFactor * Math.sin(currentTime * 55));
 
-  // 1. Horizontal slice displacement (VHS tracking tear)
-  const sliceCount = Math.ceil(intensity * 5);
+  // 1. Subtle horizontal tracking displacement (at most 2 thin slices)
+  const sliceCount = Math.min(2, Math.ceil(intensity * 3));
   for (let s = 0; s < sliceCount; s++) {
     const sliceSeed = Math.sin(currentTime * 43 + s * 19);
-    const sliceY = Math.max(0, Math.min(height - 40, Math.floor(((sliceSeed + 1) * 0.5) * height)));
-    const sliceH = Math.floor((14 + (s % 3) * 18) * scaleFactor);
-    const offset = Math.round(sliceSeed * intensity * 28 * scaleFactor);
+    const sliceY = Math.max(
+      0,
+      Math.min(height - 30, Math.floor((sliceSeed + 1) * 0.5 * height))
+    );
+    const sliceH = Math.floor((10 + (s % 2) * 12) * scaleFactor);
+    const offset = Math.round(sliceSeed * intensity * 14 * scaleFactor);
     try {
       ctx.drawImage(canvas, 0, sliceY, width, sliceH, offset, sliceY, width, sliceH);
     } catch {
@@ -526,62 +858,41 @@ function renderGlitchEffects(
     }
   }
 
-  // 2. RGB Chromatic Tint Split bars
+  // 2. Subtle RGB Chromatic Split tint
   ctx.globalCompositeOperation = 'screen';
-  ctx.fillStyle = `rgba(239, 68, 68, ${(intensity * 0.22).toFixed(3)})`;
+  ctx.fillStyle = `rgba(239, 68, 68, ${(intensity * 0.14).toFixed(3)})`;
   ctx.fillRect(Math.max(0, shiftPx), 0, width, height);
 
-  ctx.fillStyle = `rgba(6, 182, 212, ${(intensity * 0.16).toFixed(3)})`;
+  ctx.fillStyle = `rgba(6, 182, 212, ${(intensity * 0.10).toFixed(3)})`;
   ctx.fillRect(Math.max(0, -shiftPx), 0, width, height);
   ctx.globalCompositeOperation = 'source-over';
 
-  // 3. CRT / VHS Scanlines
-  ctx.fillStyle = `rgba(0, 0, 0, ${(intensity * 0.32).toFixed(3)})`;
-  const lineStep = Math.max(4, Math.round(6 * scaleFactor));
+  // 3. Brief subtle scanlines
+  ctx.fillStyle = `rgba(0, 0, 0, ${(intensity * 0.18).toFixed(3)})`;
+  const lineStep = Math.max(5, Math.round(7 * scaleFactor));
   for (let y = 0; y < height; y += lineStep) {
-    ctx.fillRect(0, y, width, Math.max(1, Math.round(2 * scaleFactor)));
-  }
-
-  // 4. Brief static interference lines
-  ctx.fillStyle = `rgba(255, 255, 255, ${(intensity * 0.25).toFixed(3)})`;
-  for (let b = 0; b < 3; b++) {
-    const barY = ((currentTime * 900 + b * 410) % height);
-    ctx.fillRect(0, barY, width, Math.round(3 * scaleFactor));
+    ctx.fillRect(0, y, width, Math.max(1, Math.round(1.5 * scaleFactor)));
   }
 
   ctx.restore();
 }
 
-/**
- * Split a scene's narration into punchy 2-4 word YouTube Shorts phrases.
- */
-export function splitNarrationIntoPhrases(narration: string, maxWords = 4): string[][] {
-  const rawWords = narration.trim().split(/\s+/).filter(Boolean);
-  if (rawWords.length === 0) return [];
+// Cache master captions per project signature so preview doesn't recompute on every 60fps frame
+let cachedCaptionsSig = '';
+let cachedCaptionsList: CaptionChunk[] = [];
 
-  const phrases: string[][] = [];
-  let current: string[] = [];
-
-  for (const word of rawWords) {
-    current.push(word);
-    const endsSentence = /[.!?,;:]$/.test(word);
-    if (current.length >= maxWords || (endsSentence && current.length >= 2)) {
-      phrases.push(current);
-      current = [];
-    }
+function getCachedMasterCaptions(
+  project: VideoProject,
+  timeline: MasterTimeline
+): CaptionChunk[] {
+  const sig = `${project.id}_${project.captions.enabled}_${project.captions.maxWordsPerLine}_${timeline.segments
+    .map((s) => `${s.scene.id}:${s.duration}:${s.scene.narration.length}`)
+    .join('|')}`;
+  if (sig !== cachedCaptionsSig) {
+    cachedCaptionsSig = sig;
+    cachedCaptionsList = buildMasterCaptions(project, timeline);
   }
-  if (current.length > 0) {
-    phrases.push(current);
-  }
-  return phrases;
-}
-
-/**
- * Check if a word is an important story keyword that should receive stronger visual emphasis.
- */
-export function isEmphasizedWord(word: string): boolean {
-  const cleaned = word.toUpperCase().replace(/[^A-Z0-9-]/g, '');
-  return EMPHASIS_KEYWORDS.has(cleaned);
+  return cachedCaptionsList;
 }
 
 /**
@@ -680,7 +991,6 @@ export function renderMasterFrame(
         1.0
       );
     } else if (trans === 'dark_fade') {
-      // Smooth dip through deep shadow
       if (t < 0.5) {
         drawSceneVisualLayer(
           ctx,
@@ -732,7 +1042,6 @@ export function renderMasterFrame(
         0.92 + t * 0.08
       );
     } else {
-      // Crossfade / Film Dissolve / Glitch Dissolve
       drawSceneVisualLayer(
         ctx,
         width,
@@ -767,160 +1076,216 @@ export function renderMasterFrame(
     );
   }
 
-  // 3. Apply Intentional Story-Driven Glitch Effects
+  // 3. Apply Subtle Story-Driven Glitch Effects
   if (glitchIntensity > 0.02 && ctx.canvas) {
     renderGlitchEffects(ctx, ctx.canvas, width, height, glitchIntensity, currentTime);
   }
 
-  // 4. Subtle Bottom Gradient for Mobile Caption Legibility (Safe Area)
-  const bottomGrad = ctx.createLinearGradient(0, height * 0.65, 0, height);
+  // 4. Subtle Lower-Third Gradient for Mobile Caption Readability
+  const bottomGrad = ctx.createLinearGradient(0, height * 0.64, 0, height);
   bottomGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  bottomGrad.addColorStop(0.55, 'rgba(0, 0, 0, 0.42)');
-  bottomGrad.addColorStop(1, 'rgba(0, 0, 0, 0.78)');
+  bottomGrad.addColorStop(0.55, 'rgba(0, 0, 0, 0.44)');
+  bottomGrad.addColorStop(1, 'rgba(0, 0, 0, 0.80)');
   ctx.fillStyle = bottomGrad;
-  ctx.fillRect(0, height * 0.65, width, height * 0.35);
+  ctx.fillRect(0, height * 0.64, width, height * 0.36);
 
-  // 5. Modern YouTube Shorts Phrase-by-Phrase Animated Captions inside Mobile Safe Area
+  // 5. High-Retention Documentary Captions (Montserrat ExtraBold, Safe Mobile Margins, Kinetic Pop & Word Emphasis)
   const { captions } = project;
-  const activeScene = activeSegment.scene;
-  if (captions.enabled && activeScene.narration) {
-    const maxWords = Math.min(4, captions.maxWordsPerLine || 4);
-    const phrases = splitNarrationIntoPhrases(activeScene.narration, maxWords);
+  if (captions.enabled) {
+    const masterChunks = getCachedMasterCaptions(project, timeline);
+    const activeCap = getActiveCaptionAtTime(masterChunks, currentTime);
 
-    if (phrases.length > 0) {
-      const totalWords = phrases.reduce((acc, p) => acc + p.length, 0);
-      const speechRatio = Math.min(0.999, Math.max(0, activeProgress / 0.94));
-      const globalWordFloat = speechRatio * totalWords;
-      const activeGlobalWordIdx = Math.min(totalWords - 1, Math.floor(globalWordFloat));
+    if (activeCap) {
+      const { chunk, elapsedInChunk } = activeCap;
+      const scaleFactor = width / 1080;
 
-      // Locate active phrase and word within phrase
-      let wordAccum = 0;
-      let activePhrase = phrases[0];
-      let phraseStartWordIdx = 0;
-      for (const p of phrases) {
-        if (activeGlobalWordIdx < wordAccum + p.length) {
-          activePhrase = p;
-          phraseStartWordIdx = wordAccum;
-          break;
-        }
-        wordAccum += p.length;
-      }
-
-      // Phrase entrance pop/scale animation
-      const phraseProgress =
-        (globalWordFloat - phraseStartWordIdx) / Math.max(1, activePhrase.length);
+      // Subtle kinetic pop-in & upward slide during first 130ms of chunk
       const popScale =
-        phraseProgress < 0.12
-          ? 0.9 + (phraseProgress / 0.12) * 0.14
-          : phraseProgress < 0.24
-          ? 1.04 - ((phraseProgress - 0.12) / 0.12) * 0.04
+        elapsedInChunk < 0.08
+          ? 0.92 + (elapsedInChunk / 0.08) * 0.11
+          : elapsedInChunk < 0.15
+          ? 1.03 - ((elapsedInChunk - 0.08) / 0.07) * 0.03
           : 1.0;
 
-      const scaleFactor = width / 1080;
+      const slideY =
+        elapsedInChunk < 0.11 ? (1 - elapsedInChunk / 0.11) * 10 * scaleFactor : 0;
+
+      const fadeAlpha =
+        elapsedInChunk < 0.06 ? 0.35 + (elapsedInChunk / 0.06) * 0.65 : 1.0;
+
       const baseFontPx =
         captions.fontSize === 'xl'
-          ? 60
+          ? 64
           : captions.fontSize === 'lg'
-          ? 52
+          ? 56
           : captions.fontSize === 'sm'
-          ? 38
-          : 44;
+          ? 42
+          : 48;
       const fontPx = Math.round(baseFontPx * scaleFactor);
+      const emphFontPx = Math.round(fontPx * 1.08);
+      const lineHeight = Math.round(fontPx * 1.24);
 
-      const captionY =
+      // Safe mobile positioning: 10% horizontal margins, 76% vertical lower-center safe zone
+      const safeMarginX = width * 0.10;
+      const maxAllowedWidth = width - safeMarginX * 2;
+      const anchorY =
         captions.position === 'top'
           ? height * 0.18
           : captions.position === 'center'
-          ? height * 0.54
-          : height * 0.79; // Safe area: above YouTube Shorts UI & below creature's face
+          ? height * 0.52
+          : height * 0.76;
 
       ctx.save();
-      // Slight caption glitch jitter if story glitch is active
-      const jitterX =
-        glitchIntensity > 0.2 ? Math.sin(currentTime * 90) * 6 * scaleFactor : 0;
-      const jitterY =
-        glitchIntensity > 0.2 ? Math.cos(currentTime * 75) * 3 * scaleFactor : 0;
-
-      ctx.translate(width / 2 + jitterX, captionY + jitterY);
+      ctx.globalAlpha = fadeAlpha;
+      ctx.translate(width / 2, anchorY + slideY);
       ctx.scale(popScale, popScale);
-      ctx.translate(-width / 2, -captionY);
+      ctx.translate(-width / 2, -anchorY);
 
-      ctx.font = `900 ${fontPx}px "Inter", "Impact", "Segoe UI", Arial, sans-serif`;
+      const fontFamily = `"Montserrat ExtraBold", "Montserrat", "Oswald", "Bebas Neue", "Impact", sans-serif`;
       ctx.textBaseline = 'middle';
 
-      const displayWords = activePhrase.map((w) => w.toUpperCase());
-      const spaceWidth = ctx.measureText(' ').width * 1.25;
-      const wordMetrics = displayWords.map((w) => ctx.measureText(w).width);
-      const totalLineWidth =
-        wordMetrics.reduce((a, b) => a + b, 0) +
-        Math.max(0, displayWords.length - 1) * spaceWidth;
+      const lines = chunk.lines;
+      const totalBlockHeight = lines.length * lineHeight;
+      const startLineY = anchorY - totalBlockHeight / 2 + lineHeight / 2;
 
-      const padX = Math.round(34 * scaleFactor);
-      const padY = Math.round(22 * scaleFactor);
-      const pillW = Math.min(width * 0.92, totalLineWidth + padX * 2);
-      const pillH = fontPx + padY * 2;
-      const pillX = (width - pillW) / 2;
-      const pillY = captionY - pillH / 2;
+      // Measure lines to draw a clean, high-contrast translucent backdrop pill
+      let maxMeasuredLineW = 0;
+      const measuredLines: Array<{
+        words: Array<{
+          token: CaptionWordToken;
+          width: number;
+          fontSize: number;
+          isActive: boolean;
+        }>;
+        totalWidth: number;
+        spaceWidth: number;
+      }> = [];
 
-      // Dark High-Contrast Pill Background
-      ctx.fillStyle = 'rgba(6, 6, 10, 0.84)';
+      for (const lineTokens of lines) {
+        ctx.font = `900 ${fontPx}px ${fontFamily}`;
+        const spaceWidth = ctx.measureText(' ').width * 1.28;
+        const wordItems = lineTokens.map((token) => {
+          const isActive =
+            currentTime >= token.startTime - 0.02 && currentTime <= token.endTime + 0.06;
+          const fSize = token.isEmphasized ? emphFontPx : fontPx;
+          ctx.font = `900 ${fSize}px ${fontFamily}`;
+          const wWidth = ctx.measureText(token.text).width;
+          return { token, width: wWidth, fontSize: fSize, isActive };
+        });
+
+        const lineW =
+          wordItems.reduce((a, b) => a + b.width, 0) +
+          Math.max(0, wordItems.length - 1) * spaceWidth;
+        if (lineW > maxMeasuredLineW) maxMeasuredLineW = lineW;
+        measuredLines.push({ words: wordItems, totalWidth: lineW, spaceWidth });
+      }
+
+      // If any line exceeds the 80% safe width, scale down proportionally so it NEVER touches edges
+      const safeFitScale =
+        maxMeasuredLineW > maxAllowedWidth ? maxAllowedWidth / maxMeasuredLineW : 1.0;
+
+      if (safeFitScale < 1.0) {
+        ctx.translate(width / 2, anchorY);
+        ctx.scale(safeFitScale, safeFitScale);
+        ctx.translate(-width / 2, -anchorY);
+      }
+
+      // Draw subtle rounded backdrop box behind the caption block for contrast
+      const padX = Math.round(32 * scaleFactor);
+      const padY = Math.round(18 * scaleFactor);
+      const boxW = Math.min(width * 0.86, maxMeasuredLineW + padX * 2);
+      const boxH = totalBlockHeight + padY * 2;
+      const boxX = (width - boxW) / 2;
+      const boxY = anchorY - boxH / 2;
+
+      ctx.fillStyle = 'rgba(6, 6, 12, 0.78)';
       ctx.beginPath();
-      ctx.roundRect(pillX, pillY, pillW, pillH, Math.round(20 * scaleFactor));
+      ctx.roundRect(boxX, boxY, boxW, boxH, Math.round(22 * scaleFactor));
       ctx.fill();
 
-      ctx.strokeStyle =
-        glitchIntensity > 0.2
-          ? 'rgba(239, 68, 68, 0.65)'
-          : 'rgba(255, 255, 255, 0.15)';
-      ctx.lineWidth = Math.max(1.5, Math.round(2.5 * scaleFactor));
+      ctx.strokeStyle = chunk.hasEmphasis
+        ? isCreepyStyle
+          ? 'rgba(255, 59, 59, 0.45)'
+          : 'rgba(250, 204, 21, 0.45)'
+        : 'rgba(255, 255, 255, 0.14)';
+      ctx.lineWidth = Math.max(1.5, Math.round(2 * scaleFactor));
       ctx.stroke();
 
-      // Draw each word with Karaoke + Keyword Emphasis
-      let cursorX = (width - totalLineWidth) / 2;
-      for (let i = 0; i < displayWords.length; i++) {
-        const word = displayWords[i];
-        const wWidth = wordMetrics[i];
-        const globalIdx = phraseStartWordIdx + i;
-        const isCurrent = globalIdx === activeGlobalWordIdx;
-        const isPassed = globalIdx < activeGlobalWordIdx;
-        const isKeyword = isEmphasizedWord(word);
+      // Render each line and word with deep black outline + keyword emphasis
+      for (let lIdx = 0; lIdx < measuredLines.length; lIdx++) {
+        const mLine = measuredLines[lIdx];
+        const lineY = startLineY + lIdx * lineHeight;
+        let cursorX = (width - mLine.totalWidth) / 2;
 
-        ctx.save();
-        ctx.textAlign = 'left';
+        for (const item of mLine.words) {
+          const { token, width: wWidth, fontSize: fSize, isActive } = item;
 
-        // Heavy black outline for YouTube Shorts readability
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = Math.max(4, Math.round(8 * scaleFactor));
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)';
-        ctx.strokeText(word, cursorX, captionY);
+          ctx.save();
+          // Subtle active word pulse
+          if (isActive) {
+            const wordCenterX = cursorX + wWidth / 2;
+            const wordPulse = token.isEmphasized ? 1.06 : 1.03;
+            ctx.translate(wordCenterX, lineY);
+            ctx.scale(wordPulse, wordPulse);
+            ctx.translate(-wordCenterX, -lineY);
+          }
 
-        if (isCurrent) {
-          ctx.fillStyle =
-            isKeyword && isCreepyStyle
-              ? '#ef4444'
-              : captions.highlightColor || '#facc15';
-          ctx.shadowColor =
-            isKeyword && isCreepyStyle
-              ? 'rgba(239, 68, 68, 0.85)'
-              : 'rgba(250, 204, 21, 0.75)';
-          ctx.shadowBlur = Math.round(16 * scaleFactor);
-        } else if (isKeyword && isPassed) {
-          ctx.fillStyle = isCreepyStyle ? '#fca5a5' : '#fde047';
-        } else if (isPassed) {
-          ctx.fillStyle = '#ffffff';
-        } else {
-          ctx.fillStyle = 'rgba(226, 232, 240, 0.85)';
+          ctx.font = `900 ${fSize}px ${fontFamily}`;
+          ctx.textAlign = 'left';
+          ctx.lineJoin = 'round';
+          ctx.miterLimit = 2;
+
+          // Deep black stroke for mobile contrast
+          ctx.lineWidth = Math.max(4, Math.round(9 * scaleFactor));
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.96)';
+          ctx.strokeText(token.text, cursorX, lineY);
+
+          // Word fill color: Important words get accent color (#FF3B3B or #FACC15), normal words stay crisp white
+          if (token.isEmphasized) {
+            ctx.fillStyle = isCreepyStyle
+              ? captions.highlightColor || '#ff3b3b'
+              : '#facc15';
+            ctx.shadowColor = isCreepyStyle
+              ? 'rgba(255, 59, 59, 0.75)'
+              : 'rgba(250, 204, 21, 0.70)';
+            ctx.shadowBlur = Math.round((isActive ? 18 : 10) * scaleFactor);
+          } else if (isActive) {
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+            ctx.shadowBlur = Math.round(10 * scaleFactor);
+          } else {
+            ctx.fillStyle = 'rgba(248, 250, 252, 0.94)';
+          }
+
+          ctx.fillText(token.text, cursorX, lineY);
+          ctx.restore();
+
+          cursorX += wWidth + mLine.spaceWidth;
         }
-
-        ctx.fillText(word, cursorX, captionY);
-        ctx.restore();
-
-        cursorX += wWidth + spaceWidth;
       }
 
       ctx.restore();
     }
   }
+}
+
+/**
+ * Extract active voiceover time windows `[start, end]` across the master timeline
+ * so both WebAudio and FFmpeg can apply smooth, synchronized music ducking.
+ */
+export function getVoiceActivityWindows(
+  timeline: MasterTimeline
+): Array<{ start: number; end: number }> {
+  const windows: Array<{ start: number; end: number }> = [];
+  for (const seg of timeline.segments) {
+    if (seg.scene.audioUrl || seg.scene.narration) {
+      windows.push({
+        start: Number((seg.start + 0.05).toFixed(3)),
+        end: Number(Math.min(seg.end - 0.05, seg.start + seg.speechDuration).toFixed(3)),
+      });
+    }
+  }
+  return windows;
 }
 
 /**
@@ -988,7 +1353,16 @@ async function fetchAndDecodeAudio(
   }
 
   const clean = url.replace(/^(\.\/|\/)/, '');
-  const candidates = [url, `./${clean}`, `/${clean}`];
+  const baseName = clean.split('/').pop() || clean;
+  const candidates = [
+    url,
+    `./${clean}`,
+    `/${clean}`,
+    `./music/${baseName}`,
+    `/music/${baseName}`,
+    `./${baseName}`,
+    `/${baseName}`,
+  ];
 
   for (const candidate of candidates) {
     try {
@@ -1008,8 +1382,8 @@ async function fetchAndDecodeAudio(
 /**
  * Build ONE Continuous Master Audio Track combining 3 Professional Audio Stems:
  * 1. VOICEOVER TRACK (Dominant, continuous across all 5 scenes)
- * 2. BACKGROUND MUSIC TRACK (ONE continuous track from 0s to end, ducked under voice, never restarting)
- * 3. SOUND EFFECTS (SFX) TRACK (Subtle atmospheric booms, wind, static, and bridge rumble at scene cues)
+ * 2. BACKGROUND MUSIC TRACK (ONE continuous track from 0s to end — e.g. Beneath_the_Heavy_Soil.mp3 — smoothly ducked ~8 dB during speech, gently swelling in pauses, never restarting)
+ * 3. SOUND EFFECTS (SFX) TRACK (Subtle atmospheric cues)
  */
 export async function buildMasterAudioTrack(
   project: VideoProject,
@@ -1027,8 +1401,17 @@ export async function buildMasterAudioTrack(
   const offlineCtx: OfflineAudioContext = new OfflineCtx(2, totalFrames, sampleRate);
 
   const voiceVol = project.project.voiceVolume ?? 1.0;
-  const musicVol = project.project.musicVolume ?? 0.22;
-  const sfxMasterVol = project.project.sfxVolume ?? 0.38;
+  const musicVol = project.project.musicVolume ?? 0.30;
+  const sfxMasterVol = project.project.sfxVolume ?? 0.34;
+
+  // Soft-knee Master Compressor/Limiter to prevent any clipping while keeping voice dominant
+  const masterCompressor = offlineCtx.createDynamicsCompressor();
+  masterCompressor.threshold.setValueAtTime(-3.0, 0);
+  masterCompressor.knee.setValueAtTime(6.0, 0);
+  masterCompressor.ratio.setValueAtTime(6.0, 0);
+  masterCompressor.attack.setValueAtTime(0.005, 0);
+  masterCompressor.release.setValueAtTime(0.08, 0);
+  masterCompressor.connect(offlineCtx.destination);
 
   // 1. Schedule all Scene Voiceovers sequentially on the Master Timeline
   const voiceWindows: Array<{ start: number; end: number }> = [];
@@ -1041,10 +1424,10 @@ export async function buildMasterAudioTrack(
         src.buffer = voiceBuf;
 
         const gainNode = offlineCtx.createGain();
-        gainNode.gain.setValueAtTime(Math.min(1.6, voiceVol * 1.25), seg.start);
+        gainNode.gain.setValueAtTime(Math.min(1.65, voiceVol * 1.32), seg.start);
 
         src.connect(gainNode);
-        gainNode.connect(offlineCtx.destination);
+        gainNode.connect(masterCompressor);
         src.start(seg.start);
 
         voiceWindows.push({
@@ -1062,10 +1445,10 @@ export async function buildMasterAudioTrack(
         sfxSrc.buffer = sfxBuf;
 
         const sfxGain = offlineCtx.createGain();
-        sfxGain.gain.setValueAtTime(sfxMasterVol * 0.85, seg.start);
+        sfxGain.gain.setValueAtTime(sfxMasterVol * 0.75, seg.start);
 
         sfxSrc.connect(sfxGain);
-        sfxGain.connect(offlineCtx.destination);
+        sfxGain.connect(masterCompressor);
         sfxSrc.start(seg.start);
       }
     }
@@ -1081,39 +1464,47 @@ export async function buildMasterAudioTrack(
     if (bgmBuf) {
       const bgmSrc = offlineCtx.createBufferSource();
       bgmSrc.buffer = bgmBuf;
-      bgmSrc.loop = true;
+      bgmSrc.loop = true; // Seamlessly loops ONLY if video is longer than track; for 56.9s Mothman vs 66.56s track, plays once continuously!
 
       const bgmGain = offlineCtx.createGain();
-      const baseBgmGain = musicVol * 0.9;
-      const duckedBgmGain = musicVol * 0.36;
+      // Un-ducked music level vs ~8 dB ducked level during active narration
+      const fullBgmGain = Math.min(0.85, musicVol * 0.85);
+      const duckedBgmGain = Math.max(0.06, fullBgmGain * 0.38); // ~8.4 dB quieter during narration
 
-      // Smooth fade-in at 0s
+      // Smooth fade-in at 0.0s -> 0.6s
       bgmGain.gain.setValueAtTime(0.001, 0);
-      bgmGain.gain.linearRampToValueAtTime(
-        voiceWindows.length > 0 ? duckedBgmGain : baseBgmGain,
-        Math.min(0.8, totalDuration * 0.1)
-      );
+      bgmGain.gain.linearRampToValueAtTime(fullBgmGain * 0.85, 0.35);
 
-      // Duck during voiceover and swell gently in dramatic pauses between scenes
-      for (const win of voiceWindows) {
-        const duckStart = Math.max(0.8, win.start);
-        bgmGain.gain.setValueAtTime(duckedBgmGain, duckStart);
-        if (win.end < totalDuration - 2.0) {
-          bgmGain.gain.setValueAtTime(duckedBgmGain, win.end);
-          bgmGain.gain.linearRampToValueAtTime(
-            baseBgmGain * 0.72,
-            Math.min(totalDuration - 2.0, win.end + 0.25)
-          );
+      // Smooth volume automation across all voiceover windows (duck when speech starts, gently swell in pauses)
+      for (let i = 0; i < voiceWindows.length; i++) {
+        const win = voiceWindows[i];
+        const nextWin = i + 1 < voiceWindows.length ? voiceWindows[i + 1] : null;
+
+        const duckAttackStart = Math.max(0.35, win.start - 0.12);
+        const duckAttackEnd = Math.min(win.end, win.start + 0.25);
+
+        bgmGain.gain.setValueAtTime(
+          i === 0 ? fullBgmGain * 0.85 : fullBgmGain * 0.72,
+          duckAttackStart
+        );
+        bgmGain.gain.linearRampToValueAtTime(duckedBgmGain, duckAttackEnd);
+        bgmGain.gain.setValueAtTime(duckedBgmGain, Math.max(duckAttackEnd, win.end - 0.08));
+
+        // If there is a breathing gap before the next scene's narration, gently swell and then duck smoothly
+        if (nextWin && nextWin.start - win.end >= 0.22 && win.end < totalDuration - 2.0) {
+          const gapMid = (win.end + nextWin.start) / 2;
+          bgmGain.gain.linearRampToValueAtTime(fullBgmGain * 0.72, gapMid);
+          bgmGain.gain.linearRampToValueAtTime(duckedBgmGain, nextWin.start + 0.18);
         }
       }
 
-      // Smooth fade-out at end of master timeline
+      // Smooth fade-out at the end of the master timeline
       const fadeOutStart = Math.max(1.0, totalDuration - 1.8);
       bgmGain.gain.setValueAtTime(duckedBgmGain, fadeOutStart);
       bgmGain.gain.linearRampToValueAtTime(0.0001, totalDuration);
 
       bgmSrc.connect(bgmGain);
-      bgmGain.connect(offlineCtx.destination);
+      bgmGain.connect(masterCompressor);
       bgmSrc.start(0);
       bgmSrc.stop(totalDuration);
     }

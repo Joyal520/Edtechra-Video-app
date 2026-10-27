@@ -1,6 +1,7 @@
 import { MusicCategory, MusicTrack } from '../types/video';
 
 export const MUSIC_CATEGORIES: MusicCategory[] = [
+  'Creepy / Horror / Mystery',
   'Mystery',
   'Cinematic',
   'Educational',
@@ -14,9 +15,23 @@ export const MUSIC_CATEGORIES: MusicCategory[] = [
 
 export const MUSIC_TRACKS: MusicTrack[] = [
   {
+    id: 'track_beneath_the_heavy_soil',
+    title: 'Beneath the Heavy Soil',
+    category: 'Creepy / Horror / Mystery',
+    duration: 67,
+    bpm: 66,
+    energy: 'low',
+    audioUrl: './music/Beneath_the_Heavy_Soil.mp3',
+    creator: 'Dark Folklore & Mystery Library',
+    license: 'Project Soundtrack (Beneath_the_Heavy_Soil.mp3)',
+    attribution: 'Beneath_the_Heavy_Soil.mp3 (Continuous Atmospheric Horror Track)',
+    toneType: 'mystery_ambient',
+    waveformPattern: [28, 46, 64, 52, 78, 88, 62, 74, 92, 68, 56, 84, 95, 70, 48, 32],
+  },
+  {
     id: 'track_creepy_legend_01',
     title: 'Point Pleasant Nightfall (Dark Mystery Drone)',
-    category: 'Mystery',
+    category: 'Creepy / Horror / Mystery',
     duration: 65,
     bpm: 64,
     energy: 'low',

@@ -80,6 +80,7 @@ export interface VoiceOption {
 }
 
 export type MusicCategory =
+  | 'Creepy / Horror / Mystery'
   | 'Mystery'
   | 'Calm'
   | 'Inspirational'
