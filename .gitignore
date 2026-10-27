@@ -8,5 +8,4 @@ coverage/
 !.env.example
 env*.txt
 .aistudio/
-public/generated/
 Gemini_Generated_Image_*.jpg

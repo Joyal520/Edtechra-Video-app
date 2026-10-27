@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { VideoProject } from '../../types/video';
 import {
-  VideoProject,
-  Scene,
-  AnimationEffect,
-  TransitionEffect,
-  CaptionSettings,
-} from '../../types/video';
-import { MUSIC_TRACKS } from '../../services/musicService';
-import { voiceGenerationService } from '../../services/voiceGenerationService';
+  buildMasterTimeline,
+  getFrameStateAtTime,
+  renderMasterFrame,
+  buildMasterAudioTrack,
+} from '../../services/compositionEngine';
 import {
   Play,
   Pause,
@@ -24,6 +22,8 @@ interface VideoPreviewPlayerProps {
   project: VideoProject;
   activeSceneIndex: number;
   onSceneChange: (index: number) => void;
+  externalTime?: number;
+  onTimeUpdate?: (time: number) => void;
   onOpenMusicSettings?: () => void;
   onOpenCaptionSettings?: () => void;
 }
@@ -32,202 +32,217 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
   project,
   activeSceneIndex,
   onSceneChange,
-  onOpenMusicSettings,
-  onOpenCaptionSettings,
+  externalTime,
+  onTimeUpdate,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(0.85);
+  const [volume, setVolume] = useState(0.9);
   const [isLooping, setIsLooping] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [imagesRevision, setImagesRevision] = useState(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageMapRef = useRef<Map<number, HTMLImageElement>>(new Map());
+  const masterAudioRef = useRef<HTMLAudioElement | null>(null);
+  const masterAudioUrlRef = useRef<string | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
+  const internalTimeRef = useRef<number>(0);
 
-  // Audio References for Master Timeline playback
-  const voiceAudioRef = useRef<HTMLAudioElement | null>(null);
-  const bgMusicAudioRef = useRef<HTMLAudioElement | null>(null);
-  const currentSceneIdRef = useRef<number | null>(null);
-
+  // Build single-source-of-truth Master Timeline
+  const timeline = useMemo(() => buildMasterTimeline(project), [project]);
+  const totalDuration = timeline.totalDuration;
   const scenes = project.scenes;
-  const totalDuration =
-    project.project.total_duration ||
-    scenes.reduce((acc, s) => acc + (s.duration || 5), 0);
 
-  // Compute accumulated scene start times on master timeline
-  const sceneTimeline = scenes.map((s, idx) => {
-    const start = scenes.slice(0, idx).reduce((acc, prev) => acc + (prev.duration || 5), 0);
-    const dur = s.duration || 5;
-    return {
-      index: idx,
-      scene: s,
-      start,
-      end: start + dur,
-      duration: dur,
-    };
-  });
-
-  // Identify current active scene based on master currentTime
-  const currentSceneInfo =
-    sceneTimeline.find((st) => currentTime >= st.start && currentTime < st.end) ||
-    sceneTimeline[sceneTimeline.length - 1] || {
-      index: 0,
-      scene: scenes[0],
-      start: 0,
-      end: scenes[0]?.duration || 6,
-      duration: scenes[0]?.duration || 6,
-    };
-
-  const activeScene = currentSceneInfo.scene;
-  const sceneProgress = Math.min(
-    1,
-    Math.max(0, (currentTime - currentSceneInfo.start) / currentSceneInfo.duration)
+  // Frame state at current master timestamp
+  const frameState = useMemo(
+    () => getFrameStateAtTime(timeline, currentTime),
+    [timeline, currentTime]
   );
+  const activeSegment = frameState.activeSegment;
+  const activeScene = activeSegment.scene;
 
-  // Keep parent active scene index in sync
-  useEffect(() => {
-    if (currentSceneInfo.index !== activeSceneIndex) {
-      onSceneChange(currentSceneInfo.index);
+  // Canvas logical dimensions matching project aspect ratio
+  const canvasDimensions = useMemo(() => {
+    switch (project.project.aspect_ratio) {
+      case '16:9':
+        return { width: 1920, height: 1080 };
+      case '1:1':
+        return { width: 1080, height: 1080 };
+      case '9:16':
+      default:
+        return { width: 1080, height: 1920 };
     }
-  }, [currentSceneInfo.index, activeSceneIndex, onSceneChange]);
+  }, [project.project.aspect_ratio]);
 
-  // ==========================================
-  // 1. MASTER CONTINUOUS BACKGROUND MUSIC
-  // ==========================================
+  // Keep parent active scene index in sync with master timeline position
   useEffect(() => {
-    const track =
-      MUSIC_TRACKS.find((t) => t.id === project.project.musicTrackId) ||
-      MUSIC_TRACKS[0];
+    if (activeSegment.index !== activeSceneIndex) {
+      onSceneChange(activeSegment.index);
+    }
+  }, [activeSegment.index, activeSceneIndex, onSceneChange]);
 
-    if (!track?.audioUrl) return;
+  // Sync when parent Timeline scrubber seeks to a new externalTime
+  useEffect(() => {
+    if (
+      typeof externalTime === 'number' &&
+      Math.abs(externalTime - internalTimeRef.current) > 0.15
+    ) {
+      const clamped = Math.max(0, Math.min(totalDuration, externalTime));
+      internalTimeRef.current = clamped;
+      setCurrentTime(clamped);
+      if (masterAudioRef.current) {
+        masterAudioRef.current.currentTime = clamped;
+      }
+    }
+  }, [externalTime, totalDuration]);
 
-    if (isPlaying && !isMuted) {
-      const baseVol = project.project.musicVolume ?? 0.22;
-      const hasVoice = Boolean(activeScene?.audioUrl || activeScene?.narration);
-      const duckFactor = hasVoice ? 0.35 : 1.0;
-      const targetVol = baseVol * duckFactor * volume;
+  // 1. Preload all scene images for the Master Composition Canvas
+  useEffect(() => {
+    let cancelled = false;
 
-      if (!bgMusicAudioRef.current) {
-        const audio = new Audio(track.audioUrl);
-        audio.loop = true;
-        audio.volume = targetVol;
-        audio.currentTime = currentTime % (track.duration || 45);
-        audio.play().catch(() => {});
-        bgMusicAudioRef.current = audio;
-      } else {
-        // Change track if ID changed
-        if (bgMusicAudioRef.current.src !== new URL(track.audioUrl, window.location.href).href) {
-          bgMusicAudioRef.current.pause();
-          const audio = new Audio(track.audioUrl);
-          audio.loop = true;
-          audio.volume = targetVol;
-          audio.currentTime = currentTime % (track.duration || 45);
-          audio.play().catch(() => {});
-          bgMusicAudioRef.current = audio;
-        } else {
-          // Track is already running - ONLY update volume (ducking) and resume if paused!
-          // NEVER restart track on scene change!
-          bgMusicAudioRef.current.volume = targetVol;
-          if (bgMusicAudioRef.current.paused) {
-            bgMusicAudioRef.current.play().catch(() => {});
+    project.scenes.forEach((sc) => {
+      if (!sc.imageUrl) return;
+      const existing = imageMapRef.current.get(sc.id);
+      if (existing && existing.dataset.src === sc.imageUrl && existing.complete) {
+        return;
+      }
+
+      const loadWithFallback = (srcToTry: string, isRetry = false) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.dataset.src = sc.imageUrl;
+        img.onload = () => {
+          if (!cancelled) {
+            imageMapRef.current.set(sc.id, img);
+            setImagesRevision((r) => r + 1);
           }
-        }
-      }
-    } else {
-      if (bgMusicAudioRef.current) {
-        bgMusicAudioRef.current.pause();
-      }
-    }
+        };
+        img.onerror = () => {
+          if (!isRetry && srcToTry.startsWith('/')) {
+            loadWithFallback(`.${srcToTry}`, true);
+          } else if (!isRetry && srcToTry.startsWith('./')) {
+            loadWithFallback(srcToTry.slice(1), true);
+          }
+        };
+        img.src = srcToTry;
+      };
+
+      loadWithFallback(sc.imageUrl);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [project.scenes]);
+
+  // 2. Build ONE Continuous Master Audio Track (All 5 Voiceovers + Continuous Ducked Music)
+  const audioSignature = useMemo(() => {
+    const sceneSig = project.scenes
+      .map((s) => `${s.id}:${s.audioUrl || ''}:${s.duration}`)
+      .join('|');
+    return `${sceneSig}__${project.project.musicTrackId}__${project.project.musicVolume}__${project.project.voiceVolume}`;
   }, [
-    isPlaying,
-    isMuted,
-    volume,
+    project.scenes,
     project.project.musicTrackId,
     project.project.musicVolume,
-    activeScene?.audioUrl,
-    activeScene?.narration,
-  ]);
-
-  // Clean up bg music on unmount
-  useEffect(() => {
-    return () => {
-      if (bgMusicAudioRef.current) {
-        bgMusicAudioRef.current.pause();
-        bgMusicAudioRef.current = null;
-      }
-    };
-  }, []);
-
-  // ==========================================
-  // 2. MASTER CONTINUOUS VOICEOVER PLAYBACK
-  // ==========================================
-  useEffect(() => {
-    if (!isPlaying || isMuted) {
-      if (voiceAudioRef.current) {
-        voiceAudioRef.current.pause();
-        voiceAudioRef.current = null;
-      }
-      voiceGenerationService.stopSpeech();
-      currentSceneIdRef.current = null;
-      return;
-    }
-
-    // Check if we need to switch scene audio
-    if (currentSceneIdRef.current !== activeScene?.id) {
-      currentSceneIdRef.current = activeScene?.id ?? null;
-
-      if (activeScene?.audioUrl) {
-        voiceGenerationService.stopSpeech();
-        if (voiceAudioRef.current) {
-          voiceAudioRef.current.pause();
-        }
-        const audio = new Audio(activeScene.audioUrl);
-        audio.volume = (project.project.voiceVolume ?? 1.0) * volume;
-        const sceneOffset = Math.max(0, currentTime - currentSceneInfo.start);
-        audio.currentTime = sceneOffset;
-        audio.play().catch(() => {});
-        voiceAudioRef.current = audio;
-      } else if (activeScene?.narration) {
-        if (voiceAudioRef.current) {
-          voiceAudioRef.current.pause();
-          voiceAudioRef.current = null;
-        }
-        voiceGenerationService.speakPreview(activeScene.narration, project.project.voiceId);
-      } else {
-        if (voiceAudioRef.current) {
-          voiceAudioRef.current.pause();
-          voiceAudioRef.current = null;
-        }
-        voiceGenerationService.stopSpeech();
-      }
-    }
-  }, [
-    activeScene?.id,
-    isPlaying,
-    isMuted,
-    volume,
-    project.project.voiceId,
     project.project.voiceVolume,
   ]);
 
-  // Clean up voice audio on unmount
+  useEffect(() => {
+    let cancelled = false;
+
+    buildMasterAudioTrack(project, timeline)
+      .then((res) => {
+        if (cancelled || !res) return;
+
+        const wasPlaying = masterAudioRef.current && !masterAudioRef.current.paused;
+        const savedTime = internalTimeRef.current;
+
+        if (masterAudioRef.current) {
+          masterAudioRef.current.pause();
+        }
+        if (masterAudioUrlRef.current) {
+          URL.revokeObjectURL(masterAudioUrlRef.current);
+        }
+
+        masterAudioUrlRef.current = res.wavBlobUrl;
+        const audio = new Audio(res.wavBlobUrl);
+        audio.preload = 'auto';
+        audio.volume = isMuted ? 0 : volume;
+        audio.currentTime = Math.min(res.duration, savedTime);
+        masterAudioRef.current = audio;
+
+        if (wasPlaying) {
+          audio.play().catch(() => {});
+        }
+      })
+      .catch((err) => {
+        console.warn('Master audio track build warning:', err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [audioSignature, timeline]);
+
+  // Update master audio volume / mute dynamically without interrupting playback
+  useEffect(() => {
+    if (masterAudioRef.current) {
+      masterAudioRef.current.volume = isMuted ? 0 : volume;
+    }
+  }, [isMuted, volume]);
+
+  // Clean up audio and object URL on unmount
   useEffect(() => {
     return () => {
-      if (voiceAudioRef.current) {
-        voiceAudioRef.current.pause();
-        voiceAudioRef.current = null;
+      if (masterAudioRef.current) {
+        masterAudioRef.current.pause();
+        masterAudioRef.current = null;
       }
-      voiceGenerationService.stopSpeech();
+      if (masterAudioUrlRef.current) {
+        URL.revokeObjectURL(masterAudioUrlRef.current);
+        masterAudioUrlRef.current = null;
+      }
     };
   }, []);
 
-  // ==========================================
-  // 3. MASTER PLAYBACK TIMER LOOP
-  // ==========================================
+  // 3. Draw Master Frame on Canvas whenever currentTime, images, or project changes
+  const drawCurrentFrame = useCallback(
+    (timeToDraw: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d', { alpha: false });
+      if (!ctx) return;
+
+      renderMasterFrame(
+        ctx,
+        canvasDimensions.width,
+        canvasDimensions.height,
+        timeToDraw,
+        timeline,
+        imageMapRef.current,
+        project
+      );
+    },
+    [canvasDimensions, timeline, project]
+  );
+
   useEffect(() => {
+    drawCurrentFrame(currentTime);
+  }, [currentTime, imagesRevision, drawCurrentFrame]);
+
+  // 4. Master Playback Loop (Synchronized with Continuous Master Audio Track)
+  useEffect(() => {
+    const audio = masterAudioRef.current;
+
     if (!isPlaying) {
+      if (audio && !audio.paused) {
+        audio.pause();
+      }
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -235,24 +250,53 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
       return;
     }
 
-    const tick = (now: number) => {
-      if (lastTimestampRef.current !== null) {
-        const delta = (now - lastTimestampRef.current) / 1000;
-        setCurrentTime((prev) => {
-          const next = prev + delta;
-          if (next >= totalDuration) {
-            if (isLooping) {
-              handleRestart();
-              return 0;
-            } else {
-              setIsPlaying(false);
-              return totalDuration;
-            }
-          }
-          return next;
-        });
+    if (audio) {
+      if (Math.abs(audio.currentTime - internalTimeRef.current) > 0.2) {
+        audio.currentTime = internalTimeRef.current;
       }
+      audio.volume = isMuted ? 0 : volume;
+      audio.play().catch(() => {});
+    }
+
+    const tick = (now: number) => {
+      const activeAudio = masterAudioRef.current;
+      let nextTime = internalTimeRef.current;
+
+      if (activeAudio && !activeAudio.paused && !activeAudio.ended) {
+        // Lock visual timeline directly to the continuous master audio clock
+        nextTime = activeAudio.currentTime;
+      } else if (lastTimestampRef.current !== null) {
+        const delta = (now - lastTimestampRef.current) / 1000;
+        nextTime = internalTimeRef.current + delta;
+      }
+
       lastTimestampRef.current = now;
+
+      if (nextTime >= totalDuration || (activeAudio && activeAudio.ended)) {
+        if (isLooping) {
+          internalTimeRef.current = 0;
+          setCurrentTime(0);
+          onTimeUpdate?.(0);
+          if (activeAudio) {
+            activeAudio.currentTime = 0;
+            activeAudio.play().catch(() => {});
+          }
+        } else {
+          internalTimeRef.current = totalDuration;
+          setCurrentTime(totalDuration);
+          onTimeUpdate?.(totalDuration);
+          if (activeAudio) {
+            activeAudio.pause();
+          }
+          setIsPlaying(false);
+          return;
+        }
+      } else {
+        internalTimeRef.current = nextTime;
+        setCurrentTime(nextTime);
+        onTimeUpdate?.(nextTime);
+      }
+
       animationFrameRef.current = requestAnimationFrame(tick);
     };
 
@@ -262,178 +306,53 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isPlaying, totalDuration, isLooping]);
+  }, [isPlaying, totalDuration, isLooping, isMuted, volume, onTimeUpdate]);
+
+  const handleSeek = (newTime: number) => {
+    const clamped = Math.min(totalDuration, Math.max(0, newTime));
+    internalTimeRef.current = clamped;
+    setCurrentTime(clamped);
+    onTimeUpdate?.(clamped);
+
+    if (masterAudioRef.current) {
+      masterAudioRef.current.currentTime = clamped;
+    }
+  };
+
+  const handleRestart = () => {
+    internalTimeRef.current = 0;
+    setCurrentTime(0);
+    onTimeUpdate?.(0);
+    if (masterAudioRef.current) {
+      masterAudioRef.current.currentTime = 0;
+      if (isPlaying) {
+        masterAudioRef.current.play().catch(() => {});
+      }
+    }
+    setIsPlaying(true);
+  };
 
   const togglePlay = () => {
-    if (currentTime >= totalDuration) {
+    if (currentTime >= totalDuration - 0.05) {
       handleRestart();
       return;
     }
     setIsPlaying((prev) => !prev);
   };
 
-  const handleSeek = (newTime: number) => {
-    const clamped = Math.min(totalDuration, Math.max(0, newTime));
-    setCurrentTime(clamped);
-
-    // Sync Background Music time without restarting
-    if (bgMusicAudioRef.current) {
-      const track =
-        MUSIC_TRACKS.find((t) => t.id === project.project.musicTrackId) ||
-        MUSIC_TRACKS[0];
-      bgMusicAudioRef.current.currentTime = clamped % (track.duration || 45);
-    }
-
-    // Sync Scene Voice Audio time
-    const targetInfo =
-      sceneTimeline.find((st) => clamped >= st.start && clamped < st.end) ||
-      sceneTimeline[sceneTimeline.length - 1];
-
-    if (targetInfo) {
-      const offset = Math.max(0, clamped - targetInfo.start);
-      if (voiceAudioRef.current && targetInfo.scene.audioUrl) {
-        if (targetInfo.scene.id === activeScene?.id) {
-          voiceAudioRef.current.currentTime = offset;
-        } else {
-          voiceAudioRef.current.pause();
-          const audio = new Audio(targetInfo.scene.audioUrl);
-          audio.volume = (project.project.voiceVolume ?? 1.0) * volume;
-          audio.currentTime = offset;
-          if (isPlaying && !isMuted) audio.play().catch(() => {});
-          voiceAudioRef.current = audio;
-          currentSceneIdRef.current = targetInfo.scene.id;
-        }
-      }
-    }
-  };
-
-  const handleRestart = () => {
-    setCurrentTime(0);
-    if (bgMusicAudioRef.current) {
-      bgMusicAudioRef.current.currentTime = 0;
-    }
-    if (voiceAudioRef.current) {
-      voiceAudioRef.current.currentTime = 0;
-    }
-    currentSceneIdRef.current = null;
-    setIsPlaying(true);
-  };
-
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+      containerRef.current
+        .requestFullscreen()
+        .then(() => setIsFullscreen(true))
+        .catch(() => {});
     } else {
-      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+      document
+        .exitFullscreen()
+        .then(() => setIsFullscreen(false))
+        .catch(() => {});
     }
-  };
-
-  // ==========================================
-  // 4. ANIMATION TRANSFORM FOR SCENE
-  // ==========================================
-  const getAnimationTransform = (anim: AnimationEffect, progress: number): string => {
-    switch (anim) {
-      case 'slow_zoom_in':
-        return `scale(${1.0 + progress * 0.10})`;
-      case 'slow_zoom_out':
-        return `scale(${1.10 - progress * 0.10})`;
-      case 'pan_left':
-        return `scale(1.10) translateX(${-(progress * 5)}%)`;
-      case 'pan_right':
-        return `scale(1.10) translateX(${progress * 5 - 2.5}%)`;
-      case 'pan_up':
-        return `scale(1.10) translateY(${-(progress * 5)}%)`;
-      case 'pan_down':
-        return `scale(1.10) translateY(${progress * 5 - 2.5}%)`;
-      case 'ken_burns':
-        return `scale(${1.04 + progress * 0.08}) translate(${-(progress * 3)}%, ${progress * 2}%)`;
-      case 'floating':
-        return `translateY(${Math.sin(progress * Math.PI * 2) * 6}px) scale(1.03)`;
-      case 'parallax':
-        return `scale(${1.02 + progress * 0.05}) rotate(${Math.sin(progress * Math.PI) * 1.2}deg)`;
-      case 'none':
-      default:
-        return 'scale(1.02)';
-    }
-  };
-
-  // Transition calculation between outgoing and incoming scenes
-  const transitionDurationSec = 0.45;
-  const timeIntoScene = currentTime - currentSceneInfo.start;
-  const isTransitioning = currentSceneInfo.index > 0 && timeIntoScene < transitionDurationSec;
-  const transProgress = isTransitioning ? timeIntoScene / transitionDurationSec : 1;
-  const prevScene = isTransitioning ? scenes[currentSceneInfo.index - 1] : null;
-
-  // Render Subtitles / Captions
-  const renderCaptions = () => {
-    const { captions } = project;
-    if (!captions.enabled || !activeScene?.narration) return null;
-
-    const words = activeScene.narration.split(' ');
-    const activeWordIndex = Math.min(
-      words.length - 1,
-      Math.floor(sceneProgress * words.length)
-    );
-
-    const maxWords = captions.maxWordsPerLine || 5;
-    const currentLineStart = Math.floor(activeWordIndex / maxWords) * maxWords;
-    const visibleWords = words.slice(currentLineStart, currentLineStart + maxWords);
-
-    const posClass =
-      captions.position === 'top'
-        ? 'top-8'
-        : captions.position === 'center'
-        ? 'top-1/2 -translate-y-1/2'
-        : 'bottom-16';
-
-    const sizeClass =
-      captions.fontSize === 'xl'
-        ? 'text-xl sm:text-2xl font-black'
-        : captions.fontSize === 'lg'
-        ? 'text-base sm:text-lg font-extrabold'
-        : captions.fontSize === 'sm'
-        ? 'text-xs sm:text-sm font-semibold'
-        : 'text-sm sm:text-base font-bold';
-
-    if (captions.style === 'KARAOKE') {
-      return (
-        <div className={`absolute left-0 right-0 px-6 ${posClass} z-20 pointer-events-none text-center`}>
-          <div className="inline-block px-4 py-2 rounded-xl bg-black/75 backdrop-blur-md border border-white/10 shadow-2xl">
-            <div className={`flex flex-wrap items-center justify-center gap-1.5 ${sizeClass} tracking-wide`}>
-              {visibleWords.map((word, idx) => {
-                const globalIdx = currentLineStart + idx;
-                const isHighlighted = globalIdx === activeWordIndex;
-                const isPassed = globalIdx < activeWordIndex;
-
-                return (
-                  <span
-                    key={idx}
-                    className={`transition-all duration-100 ${
-                      isHighlighted
-                        ? 'text-amber-300 scale-110 drop-shadow-[0_0_12px_rgba(250,204,21,0.85)] font-black'
-                        : isPassed
-                        ? 'text-white'
-                        : 'text-neutral-400 opacity-80'
-                    }`}
-                  >
-                    {word}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Default stylized
-    return (
-      <div className={`absolute left-0 right-0 px-6 ${posClass} z-20 pointer-events-none text-center`}>
-        <div className="inline-block px-4 py-1.5 rounded-lg bg-black/75 backdrop-blur-sm shadow-md border border-white/10">
-          <p className={`text-white ${sizeClass}`}>{visibleWords.join(' ')}</p>
-        </div>
-      </div>
-    );
   };
 
   const formatTime = (secs: number) => {
@@ -475,7 +394,7 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
 
         <div className="flex items-center gap-3">
           <span className="text-neutral-400">
-            Scene {currentSceneInfo.index + 1} of {scenes.length}
+            Scene {activeSegment.index + 1} of {scenes.length}
           </span>
           <span className="px-2 py-0.5 rounded bg-neutral-900 text-neutral-300 font-mono">
             {formatTime(currentTime)} / {formatTime(totalDuration)}
@@ -483,76 +402,40 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
         </div>
       </div>
 
-      {/* Screen Player Frame */}
+      {/* Screen Player Frame (Unified Master Canvas) */}
       <div className="relative w-full flex-1 flex items-center justify-center min-h-[320px] overflow-hidden py-2">
         <div
           className={`relative rounded-2xl overflow-hidden bg-black border-2 border-neutral-800 shadow-2xl ${getAspectRatioClasses()}`}
         >
-          {/* Transition Base Layer: Outgoing previous scene during transition */}
-          {isTransitioning && prevScene?.imageUrl && (
-            <div className="absolute inset-0 z-0 overflow-hidden">
-              <img
-                src={prevScene.imageUrl}
-                alt={`Scene ${prevScene.id}`}
-                className="w-full h-full object-cover object-center select-none"
-                style={{
-                  transform: getAnimationTransform(prevScene.animation || 'slow_zoom_in', 1.0),
-                  opacity: 1 - transProgress,
-                  transition: 'opacity 0.05s linear',
-                }}
-              />
+          <canvas
+            ref={canvasRef}
+            width={canvasDimensions.width}
+            height={canvasDimensions.height}
+            onClick={togglePlay}
+            className="w-full h-full object-contain block cursor-pointer select-none"
+          />
+
+          {!activeScene?.imageUrl && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-neutral-900/90 text-neutral-400 pointer-events-none">
+              <Sparkles className="w-10 h-10 text-indigo-500 mb-2 animate-spin" />
+              <p className="text-sm font-bold text-white">Generating Visual...</p>
+              <p className="text-xs text-neutral-500 mt-1">{activeScene?.image_prompt}</p>
             </div>
           )}
 
-          {/* Incoming Active Scene Layer */}
-          <div
-            className="w-full h-full relative z-10 overflow-hidden"
-            style={{
-              opacity: isTransitioning ? transProgress : 1,
-              transform:
-                isTransitioning && activeScene?.transition === 'slide_left'
-                  ? `translateX(${(1 - transProgress) * 100}%)`
-                  : isTransitioning && activeScene?.transition === 'slide_right'
-                  ? `translateX(${-(1 - transProgress) * 100}%)`
-                  : isTransitioning && activeScene?.transition === 'zoom'
-                  ? `scale(${0.85 + transProgress * 0.15})`
-                  : 'none',
-              transition: 'opacity 0.05s linear',
-            }}
-          >
-            {activeScene?.imageUrl ? (
-              <img
-                src={activeScene.imageUrl}
-                alt={`Scene ${activeScene.id}`}
-                className="w-full h-full object-cover object-center select-none"
-                style={{
-                  transform: getAnimationTransform(
-                    activeScene.animation || 'slow_zoom_in',
-                    sceneProgress
-                  ),
-                  transition: 'transform 0.08s linear',
-                }}
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-neutral-900 text-neutral-400">
-                <Sparkles className="w-10 h-10 text-indigo-500 mb-2 animate-spin" />
-                <p className="text-sm font-bold text-white">Generating Visual...</p>
-                <p className="text-xs text-neutral-500 mt-1">{activeScene?.image_prompt}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Subtitles / Captions */}
-          {renderCaptions()}
-
           {/* Top Scene HUD indicator inside video */}
-          <div className="absolute top-3 left-3 z-20 pointer-events-none flex items-center gap-2">
+          <div className="absolute top-3 left-3 z-20 pointer-events-none flex flex-wrap items-center gap-1.5">
             <span className="px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-mono font-bold text-white border border-white/10">
               SCENE {activeScene?.id || 1}
             </span>
             <span className="px-2 py-0.5 rounded-md bg-indigo-950/80 backdrop-blur-md text-[10px] font-bold text-indigo-300 border border-indigo-700/40 capitalize">
-              {activeScene?.animation.replace(/_/g, ' ')}
+              {(activeScene?.animation || 'slow_zoom_in').replace(/_/g, ' ')}
             </span>
+            {frameState.isTransitioning && (
+              <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 backdrop-blur-md text-[10px] font-bold text-emerald-300 border border-emerald-600/40 uppercase">
+                ⇄ {activeSegment.transitionType.replace(/_/g, ' ')}
+              </span>
+            )}
             {activeScene?.on_screen_text && (
               <span className="px-2 py-0.5 rounded-md bg-neutral-900/90 backdrop-blur-md text-[10px] font-extrabold text-amber-300 border border-amber-500/30">
                 {activeScene.on_screen_text}
@@ -560,7 +443,7 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
             )}
           </div>
 
-          {/* Big Center Play/Pause button on hover / pause */}
+          {/* Big Center Play/Pause button on pause */}
           {!isPlaying && (
             <div
               onClick={togglePlay}
@@ -574,10 +457,9 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
         </div>
       </div>
 
-      {/* Scrubber / Timeline Bar */}
+      {/* Scrubber / Master Timeline Bar */}
       <div className="w-full px-2 pt-3">
         <div className="relative group cursor-pointer mb-2">
-          {/* Progress bar background */}
           <div
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
@@ -587,24 +469,24 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
             className="w-full h-2 rounded-full bg-neutral-800 overflow-hidden relative"
           >
             {/* Scene separator ticks */}
-            {sceneTimeline.map((st) => (
+            {timeline.segments.map((seg) => (
               <div
-                key={st.index}
+                key={seg.index}
                 className="absolute top-0 bottom-0 w-0.5 bg-neutral-950 z-10"
-                style={{ left: `${(st.start / totalDuration) * 100}%` }}
+                style={{ left: `${(seg.start / totalDuration) * 100}%` }}
               />
             ))}
 
             {/* Active filled progress */}
             <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 relative transition-all duration-75"
+              className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 relative"
               style={{ width: `${(currentTime / totalDuration) * 100}%` }}
             />
           </div>
 
           {/* Scrubber Knob */}
           <div
-            className="absolute top-1/2 -translate-y-1/2 -ml-2 w-4 h-4 rounded-full bg-white shadow-md shadow-indigo-600/50 pointer-events-none transition-transform"
+            className="absolute top-1/2 -translate-y-1/2 -ml-2 w-4 h-4 rounded-full bg-white shadow-md shadow-indigo-600/50 pointer-events-none"
             style={{ left: `${(currentTime / totalDuration) * 100}%` }}
           />
         </div>
@@ -619,7 +501,11 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
               title={isPlaying ? 'Pause' : 'Play'}
               aria-label={isPlaying ? 'Pause' : 'Play'}
             >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5 fill-white" />}
+              {isPlaying ? (
+                <Pause className="w-4 h-4" />
+              ) : (
+                <Play className="w-4 h-4 ml-0.5 fill-white" />
+              )}
             </button>
 
             <button
@@ -638,15 +524,12 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
 
           {/* Center: Quick scene stepper */}
           <div className="hidden sm:flex items-center gap-1.5">
-            {scenes.map((s, idx) => (
+            {timeline.segments.map((seg, idx) => (
               <button
-                key={s.id}
-                onClick={() => {
-                  const targetTime = sceneTimeline[idx]?.start || 0;
-                  handleSeek(targetTime);
-                }}
+                key={seg.scene.id}
+                onClick={() => handleSeek(seg.start)}
                 className={`px-2 py-0.5 rounded text-[11px] font-bold transition-colors ${
-                  activeSceneIndex === idx
+                  activeSegment.index === idx
                     ? 'bg-indigo-600 text-white'
                     : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-400'
                 }`}

@@ -628,6 +628,8 @@ export const VideoProductionWorkspace: React.FC<VideoProductionWorkspaceProps> =
             project={project}
             activeSceneIndex={activeSceneIndex}
             onSceneChange={(idx) => setActiveSceneIndex(idx)}
+            externalTime={previewTime}
+            onTimeUpdate={(t) => setPreviewTime(t)}
             onOpenMusicSettings={() => setIsMusicDrawerOpen(true)}
             onOpenCaptionSettings={() => setIsCaptionsDrawerOpen(true)}
           />

@@ -123,6 +123,9 @@ export const SEED_DEMO_PROJECT: VideoProject = {
     language: 'English',
     total_duration: 35,
     voiceId: 'female_educational',
+    musicTrackId: 'educational-01',
+    musicVolume: 0.2,
+    voiceVolume: 1.0,
   },
   captions: {
     enabled: true,
@@ -215,6 +218,9 @@ export const PROCRASTINATION_PROJECT: VideoProject = {
     language: 'English',
     total_duration: 21,
     voiceId: 'female_educational',
+    musicTrackId: 'educational-01',
+    musicVolume: 0.2,
+    voiceVolume: 1.0,
   },
   captions: {
     enabled: true,
@@ -349,6 +355,26 @@ class StorageService {
   deleteProject(id: string): void {
     this.projects = this.projects.filter((p) => p.id !== id);
     this.saveToStorage();
+  }
+
+  duplicateProject(id: string): VideoProject | undefined {
+    const original = this.projects.find((p) => p.id === id);
+    if (!original) return undefined;
+
+    const copy: VideoProject = {
+      ...JSON.parse(JSON.stringify(original)),
+      id: `project_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      project: {
+        ...original.project,
+        title: `${original.project.title} (Copy)`,
+      },
+    };
+
+    this.projects.unshift(copy);
+    this.saveToStorage();
+    return copy;
   }
 
   getActiveProjectId(): string | null {
