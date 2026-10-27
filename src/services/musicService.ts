@@ -1,17 +1,32 @@
 import { MusicCategory, MusicTrack } from '../types/video';
 
 export const MUSIC_CATEGORIES: MusicCategory[] = [
+  'Mystery',
+  'Cinematic',
+  'Educational',
   'Calm',
   'Inspirational',
   'Positive',
-  'Educational',
-  'Cinematic',
   'Soft',
   'Motivational',
   'Emotional',
 ];
 
 export const MUSIC_TRACKS: MusicTrack[] = [
+  {
+    id: 'track_creepy_legend_01',
+    title: 'Point Pleasant Nightfall (Dark Mystery Drone)',
+    category: 'Mystery',
+    duration: 65,
+    bpm: 64,
+    energy: 'low',
+    audioUrl: './music/creepy-legend-01.mp3',
+    creator: 'Faceless Studio Dark Folklore Unit',
+    license: 'Creative Commons 0 (CC0 Public Domain)',
+    attribution: 'None required (100% Free for Commercial & YouTube Shorts use)',
+    toneType: 'mystery_ambient',
+    waveformPattern: [20, 35, 50, 45, 65, 80, 55, 70, 85, 60, 50, 75, 90, 65, 45, 25],
+  },
   {
     id: 'track_educational_01',
     title: 'Focus Horizon (Study & Learn)',

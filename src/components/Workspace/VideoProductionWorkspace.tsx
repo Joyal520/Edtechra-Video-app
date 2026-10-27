@@ -10,7 +10,11 @@ import {
   fileToDataUrl,
 } from '../../services/imageGenerationService';
 import { voiceGenerationService } from '../../services/voiceGenerationService';
-import { storageService, DUNNING_KRUGER_PROJECT } from '../../services/storageService';
+import {
+  storageService,
+  DUNNING_KRUGER_PROJECT,
+  MOTHMAN_MYSTERY_PROJECT,
+} from '../../services/storageService';
 import { MUSIC_TRACKS } from '../../services/musicService';
 import { VideoPreviewPlayer } from './VideoPreviewPlayer';
 import { SceneList } from './SceneList';
@@ -501,6 +505,17 @@ export const VideoProductionWorkspace: React.FC<VideoProductionWorkspaceProps> =
 
         {/* Center / Right: Tool buttons & Primary Actions */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {/* Quick Switch to Mothman Mystery Creepy Legend Preset */}
+          {project.id !== 'project_mothman_mystery_legend' && (
+            <button
+              onClick={() => updateAndSaveProject(MOTHMAN_MYSTERY_PROJECT)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600/15 hover:bg-red-600/25 border border-red-500/40 text-xs font-semibold text-red-300 transition-colors"
+              title="Load Creepy Legend Preset: The Mothman Mystery"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-red-400" />
+              <span>🦇 Load Mothman Mystery</span>
+            </button>
+          )}
           {/* Quick Switch to Dunning-Kruger 5-Stage Preset */}
           {project.id !== 'project_dunning_kruger_psychology' && (
             <button

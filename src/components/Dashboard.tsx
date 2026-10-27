@@ -4,7 +4,10 @@ import {
   VideoStyle,
   AspectRatio,
 } from '../types/video';
-import { DUNNING_KRUGER_PROJECT } from '../services/storageService';
+import {
+  DUNNING_KRUGER_PROJECT,
+  MOTHMAN_MYSTERY_PROJECT,
+} from '../services/storageService';
 import {
   Plus,
   Search,
@@ -34,6 +37,15 @@ interface TemplateStarter {
 }
 
 const TEMPLATE_STARTERS: TemplateStarter[] = [
+  {
+    title: 'The Mothman Mystery (Creepy Legend)',
+    topic: 'The 1966–1967 Point Pleasant sightings of a tall winged figure with glowing red eyes and the tragic Silver Bridge collapse.',
+    style: 'creepy_legend',
+    aspectRatio: '9:16',
+    duration: 57,
+    scenesCount: 5,
+    category: 'Creepy Legend',
+  },
   {
     title: 'The Dunning–Kruger Effect (5 Stages)',
     topic: 'The 5 psychological stages of learning: from beginner overconfidence to the valley of despair, humility, and true realistic mastery.',
@@ -267,6 +279,56 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* Featured Mothman Mystery Creepy Legend Short Quick Launch */}
+        {filterTab !== 'templates' && !searchQuery && (
+          <section className="mt-6 mb-6 rounded-3xl bg-gradient-to-r from-red-950/75 via-neutral-900 to-neutral-950 border border-red-500/35 p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+              <div className="space-y-2 max-w-xl">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-bold">
+                  <Flame className="w-3.5 h-3.5 text-red-400" /> Creepy Legend YouTube Short (56.9s)
+                </div>
+                <h3 className="text-xl sm:text-2xl font-extrabold text-white">
+                  The Mothman Mystery (Point Pleasant, 1966–1967)
+                </h3>
+                <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                  Complete <strong>5-scene dark cinematic legend Short</strong> with OpenAI 9:16 visuals, deep storytelling voiceover, 3-layer parallax fog, VHS/RGB glitch moments, continuous eerie soundtrack, and atmospheric SFX.
+                </p>
+
+                {/* 5 Mothman Thumbnails Preview */}
+                <div className="flex items-center gap-2 pt-2">
+                  {[1, 2, 3, 4, 5].map((num) => (
+                    <div key={num} className="relative w-11 h-16 rounded-lg overflow-hidden border border-red-900/60 bg-neutral-950 shrink-0">
+                      <img
+                        src={`./generated/images/mothman_scene_${num}.png`}
+                        alt={`Mothman Scene ${num}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-0 inset-x-0 bg-black/75 text-[9px] font-mono text-center text-red-300 font-bold py-0.5">
+                        S{num}
+                      </div>
+                    </div>
+                  ))}
+                  <span className="text-xs text-neutral-400 pl-2 hidden sm:inline">
+                    5 AI-generated 9:16 scenes • 1080×1920 MP4 ready
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
+                <button
+                  onClick={() => onOpenProject(MOTHMAN_MYSTERY_PROJECT)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold text-white bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 shadow-lg shadow-red-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Play className="w-4 h-4 fill-white" />
+                  <span>Open Mothman Mystery</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </section>
         )}

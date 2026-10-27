@@ -72,6 +72,8 @@ export const SceneEditorModal: React.FC<SceneEditorModalProps> = ({
   const [onScreenText, setOnScreenText] = useState(scene.on_screen_text || '');
   const [animation, setAnimation] = useState<AnimationEffect>(scene.animation || 'slow_zoom_in');
   const [transition, setTransition] = useState<TransitionEffect>(scene.transition || 'crossfade');
+  const [glitchEffect, setGlitchEffect] = useState<Scene['glitchEffect']>(scene.glitchEffect || 'none');
+  const [sfxLabel, setSfxLabel] = useState<string>(scene.sfxLabel || '');
 
   // Image source state
   const [imageSourceTab, setImageSourceTab] = useState<'ai' | 'upload' | 'stages'>(
@@ -107,6 +109,8 @@ export const SceneEditorModal: React.FC<SceneEditorModalProps> = ({
       setOnScreenText(scene.on_screen_text || '');
       setAnimation(scene.animation || 'slow_zoom_in');
       setTransition(scene.transition || 'crossfade');
+      setGlitchEffect(scene.glitchEffect || 'none');
+      setSfxLabel(scene.sfxLabel || '');
       setImageUrl(scene.imageUrl);
       setCropMode(scene.cropMode || 'cover');
       setImageSourceType(scene.imageSourceType || 'ai');
@@ -142,6 +146,8 @@ export const SceneEditorModal: React.FC<SceneEditorModalProps> = ({
       on_screen_text: onScreenText.trim() || undefined,
       animation,
       transition,
+      glitchEffect: glitchEffect && glitchEffect !== 'none' ? glitchEffect : undefined,
+      sfxLabel: sfxLabel.trim() || undefined,
       imageUrl,
       imageSourceType,
       cropMode,
@@ -784,6 +790,42 @@ export const SceneEditorModal: React.FC<SceneEditorModalProps> = ({
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          {/* SECTION 4: CREEPY ATMOSPHERE (GLITCH & SFX) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-red-400" />
+                <span>Glitch Effect (Key Moments)</span>
+              </label>
+              <select
+                value={glitchEffect || 'none'}
+                onChange={(e) => setGlitchEffect(e.target.value as Scene['glitchEffect'])}
+                className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-xs text-white focus:outline-none focus:ring-2 focus:ring-red-500/50 capitalize"
+              >
+                <option value="none" className="bg-neutral-900">None</option>
+                <option value="rgb_split" className="bg-neutral-900">RGB Split (Chromatic Aberration)</option>
+                <option value="vhs_flicker" className="bg-neutral-900">VHS Flicker & Scanlines</option>
+                <option value="scanline_static" className="bg-neutral-900">Scanline Static</option>
+                <option value="signal_distortion" className="bg-neutral-900">Signal Distortion</option>
+                <option value="crimson_shock" className="bg-neutral-900">Crimson Shock</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Volume2 className="w-3.5 h-3.5 text-purple-400" />
+                <span>Atmospheric Sound Effect Label</span>
+              </label>
+              <input
+                type="text"
+                value={sfxLabel}
+                onChange={(e) => setSfxLabel(e.target.value)}
+                placeholder="e.g., Eerie Wind + Low Boom"
+                className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-xs text-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+              />
             </div>
           </div>
         </div>

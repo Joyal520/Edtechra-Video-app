@@ -257,6 +257,18 @@ export const SceneList: React.FC<SceneListProps> = ({
                     <span className="px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 font-medium capitalize">
                       {scene.animation.replace(/_/g, ' ')}
                     </span>
+
+                    {scene.glitchEffect && scene.glitchEffect !== 'none' && (
+                      <span className="px-2 py-0.5 rounded bg-red-950/80 text-red-400 border border-red-800/50 font-semibold capitalize">
+                        ⚡ {scene.glitchEffect.replace(/_/g, ' ')}
+                      </span>
+                    )}
+
+                    {scene.sfxLabel && (
+                      <span className="px-2 py-0.5 rounded bg-purple-950/70 text-purple-300 border border-purple-800/50 font-medium truncate max-w-[140px]">
+                        🔊 {scene.sfxLabel}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

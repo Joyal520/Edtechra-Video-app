@@ -312,6 +312,13 @@ VOICE PERSONA: ${voicePersona}`;
           enhancedPrompt += ' Widescreen cinematic framing.';
         }
 
+        const imgSize =
+          aspectRatio === '9:16'
+            ? '1024x1536'
+            : aspectRatio === '16:9'
+            ? '1536x1024'
+            : '1024x1024';
+
         const openAiRes = await fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST',
           headers: {
@@ -321,6 +328,7 @@ VOICE PERSONA: ${voicePersona}`;
           body: JSON.stringify({
             model: 'gpt-image-1-mini',
             prompt: enhancedPrompt,
+            size: imgSize,
             n: 1,
           }),
         });
@@ -370,6 +378,7 @@ VOICE PERSONA: ${voicePersona}`;
           text = '',
           voiceId = 'female_educational',
           language = 'English',
+          speed,
           forceRegenerate = false,
         } = body;
 
@@ -386,14 +395,23 @@ VOICE PERSONA: ${voicePersona}`;
         }
 
         const openAiVoice = mapToOpenAIVoice(voiceId);
-        const hash = crypto.createHash('md5').update(`${text}_${openAiVoice}_${language}`).digest('hex');
+        const speechSpeed =
+          typeof speed === 'number'
+            ? Math.max(0.5, Math.min(1.5, speed))
+            : voiceId.includes('storyteller')
+            ? 0.85
+            : 1.0;
+
+        const hash = crypto
+          .createHash('md5')
+          .update(`${text}_${openAiVoice}_${language}_${speechSpeed}`)
+          .digest('hex');
         const filename = `voice_${hash}.mp3`;
         const filePath = path.join(audioDir, filename);
-        const publicUrl = `/generated/audio/${filename}`;
+        const publicUrl = `./generated/audio/${filename}`;
 
         if (!forceRegenerate && fs.existsSync(filePath)) {
           const stats = fs.statSync(filePath);
-          // Estimate duration: MP3 @ 128kbps = 16000 bytes per second
           const estimatedDuration = Math.max(2, Math.round((stats.size / 16000) * 10) / 10);
           return sendJson(res, 200, {
             success: true,
@@ -415,6 +433,7 @@ VOICE PERSONA: ${voicePersona}`;
             model: 'tts-1',
             input: text,
             voice: openAiVoice,
+            speed: speechSpeed,
             response_format: 'mp3',
           }),
         });

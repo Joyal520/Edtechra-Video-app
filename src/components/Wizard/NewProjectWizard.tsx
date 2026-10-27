@@ -8,7 +8,10 @@ import {
 import { VOICE_OPTIONS, voiceGenerationService } from '../../services/voiceGenerationService';
 import { generateAIVideoPrompt } from '../../services/promptGenerator';
 import { aiPlannerService } from '../../services/aiPlannerService';
-import { DUNNING_KRUGER_PROJECT } from '../../services/storageService';
+import {
+  DUNNING_KRUGER_PROJECT,
+  MOTHMAN_MYSTERY_PROJECT,
+} from '../../services/storageService';
 import {
   Sparkles,
   ArrowRight,
@@ -37,6 +40,13 @@ interface StyleCardConfig {
 }
 
 const STYLE_CARDS: StyleCardConfig[] = [
+  {
+    id: 'creepy_legend',
+    label: 'Creepy Legend',
+    tagline: 'Dark folklore, red eyes, fog & VHS glitches',
+    bgPreview: 'from-red-950/90 to-neutral-950 border-red-500/50',
+    badgeColor: 'text-red-300 bg-red-950/80',
+  },
   {
     id: 'stickman',
     label: 'Stickman',
@@ -383,6 +393,24 @@ export const NewProjectWizard: React.FC<NewProjectWizardProps> = ({
 
               {/* Quick Prompt Starters */}
               <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onDirectCreateProject) {
+                      onDirectCreateProject(MOTHMAN_MYSTERY_PROJECT);
+                    } else {
+                      setTopic('The Mothman Mystery: Point Pleasant 1966–1967');
+                      setSelectedStyle('creepy_legend');
+                      setAspectRatio('9:16');
+                      setSceneCount(5);
+                      setTargetDuration(60);
+                    }
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-red-600/30 border border-red-500/50 text-red-200 font-bold hover:bg-red-600 hover:text-white transition-all flex items-center gap-1.5 shadow-sm"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-red-300" />
+                  <span>🦇 Creepy Legend Preset: The Mothman Mystery (56.9s)</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => {

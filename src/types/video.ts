@@ -7,6 +7,7 @@ export interface RenderOptions {
 export type AspectRatio = '9:16' | '16:9' | '1:1' | '4:5';
 
 export type VideoStyle =
+  | 'creepy_legend'
   | 'stickman'
   | '3d_cartoon'
   | 'paper_cut'
@@ -36,12 +37,23 @@ export type TransitionEffect =
   | 'none'
   | 'fade'
   | 'crossfade'
+  | 'dark_fade'
+  | 'film_dissolve'
+  | 'glitch'
   | 'slide_left'
   | 'slide_right'
   | 'zoom'
   | 'blur'
   | 'wipe'
   | 'push';
+
+export type GlitchEffect =
+  | 'none'
+  | 'rgb_split'
+  | 'vhs_flicker'
+  | 'scanline_static'
+  | 'signal_distortion'
+  | 'crimson_shock';
 
 export type CaptionStyle = 'NORMAL' | 'BOLD' | 'KARAOKE' | 'POP' | 'MINIMAL';
 export type CaptionPosition = 'bottom' | 'center' | 'top';
@@ -68,6 +80,7 @@ export interface VoiceOption {
 }
 
 export type MusicCategory =
+  | 'Mystery'
   | 'Calm'
   | 'Inspirational'
   | 'Positive'
@@ -76,7 +89,6 @@ export type MusicCategory =
   | 'Soft'
   | 'Motivational'
   | 'Emotional'
-  | 'Mystery'
   | 'Funny'
   | 'Corporate';
 
@@ -92,7 +104,13 @@ export interface MusicTrack {
   attribution?: string;
   creator?: string;
   waveformPattern?: number[];
-  toneType?: 'synth_chill' | 'lofi_study' | 'cinematic_strings' | 'mystery_ambient' | 'corporate_bright' | 'calm_piano';
+  toneType?:
+    | 'synth_chill'
+    | 'lofi_study'
+    | 'cinematic_strings'
+    | 'mystery_ambient'
+    | 'corporate_bright'
+    | 'calm_piano';
 }
 
 export type ImageSourceType = 'ai' | 'upload' | 'sample';
@@ -106,6 +124,10 @@ export interface Scene {
   on_screen_text?: string;
   animation: AnimationEffect;
   transition: TransitionEffect;
+  glitchEffect?: GlitchEffect;
+  parallaxIntensity?: number; // 0 to 1
+  sfxUrl?: string;
+  sfxLabel?: string;
   imageUrl?: string;
   audioUrl?: string;
   imageSourceType?: ImageSourceType;
@@ -130,6 +152,7 @@ export interface ProjectSettings {
   musicTrackId?: string;
   musicVolume: number; // 0 to 1
   voiceVolume: number; // 0 to 1
+  sfxVolume?: number; // 0 to 1
 }
 
 export interface VideoProject {

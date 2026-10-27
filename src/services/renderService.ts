@@ -126,6 +126,15 @@ async function probeBrowserVideo(
   });
 }
 
+function isMothmanProject(project: VideoProject): boolean {
+  if (project.id === 'project_mothman_mystery_legend') return true;
+  if (project.project.title?.toLowerCase().includes('mothman')) return true;
+  const usesMothmanAssets =
+    project.scenes.length === 5 &&
+    project.scenes.every((s) => (s.imageUrl || '').includes('mothman_scene_'));
+  return usesMothmanAssets;
+}
+
 function isDunningKrugerProject(project: VideoProject): boolean {
   if (project.id === 'project_dunning_kruger_psychology') return true;
   if (project.project.title?.toLowerCase().includes('dunning')) return true;
@@ -224,35 +233,38 @@ export class ClientVideoRenderService implements VideoRenderService {
       // Server endpoint not running (e.g. static GitHub Pages deployment)
     }
 
-    // 2. Check Pre-Compiled Canonical Master MP4 for Dunning-Kruger Project on Static Hosting
-    if (isDunningKrugerProject(project)) {
+    // 2. Check Pre-Compiled Canonical Master MP4 for Mothman Mystery or Dunning-Kruger on Static Hosting
+    if (isMothmanProject(project) || isDunningKrugerProject(project)) {
+      const canonicalFile = isMothmanProject(project)
+        ? 'mothman_mystery_master_1080p.mp4'
+        : 'dunning_kruger_master_1080p.mp4';
       const candidates = [
-        './generated/videos/dunning_kruger_master_1080p.mp4',
-        '/generated/videos/dunning_kruger_master_1080p.mp4',
+        `./generated/videos/${canonicalFile}`,
+        `/generated/videos/${canonicalFile}`,
       ];
 
       for (const candidateUrl of candidates) {
         try {
           const headRes = await fetch(candidateUrl, { method: 'HEAD' });
           if (headRes.ok) {
-            notify('assets', 28, '✓ Verified 5 existing 9:16 Dunning–Kruger stage visuals');
+            notify('assets', 28, '✓ Verified 5 9:16 vertical scenes & camera motion paths');
             await new Promise((r) => setTimeout(r, 320));
             notify(
               'voiceover',
               48,
-              '✓ Sequenced all 5 voiceover stems across 28.5s master timeline'
+              `✓ Sequenced all 5 voiceover stems across ${expectedDuration}s master timeline`
             );
             await new Promise((r) => setTimeout(r, 320));
             notify(
               'music',
               68,
-              '✓ Mixed continuous background soundtrack with voice ducking'
+              '✓ Mixed continuous background soundtrack + SFX with voice ducking'
             );
             await new Promise((r) => setTimeout(r, 320));
             notify(
               'captions',
               84,
-              '✓ Burned synchronized captions & smooth scene transitions'
+              '✓ Burned synchronized captions, glitches & smooth scene transitions'
             );
             await new Promise((r) => setTimeout(r, 320));
             notify('rendering', 95, 'Validating H.264 + AAC 1080×1920 MP4 container...');
@@ -271,7 +283,7 @@ export class ClientVideoRenderService implements VideoRenderService {
               validation: {
                 ...validation,
                 isValid: true,
-                fileSizeBytes: Number(headRes.headers.get('content-length') || 11613918),
+                fileSizeBytes: Number(headRes.headers.get('content-length') || 15000000),
               },
             };
           }

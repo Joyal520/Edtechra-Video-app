@@ -436,6 +436,16 @@ export const VideoPreviewPlayer: React.FC<VideoPreviewPlayerProps> = ({
                 ⇄ {activeSegment.transitionType.replace(/_/g, ' ')}
               </span>
             )}
+            {frameState.glitchIntensity > 0.1 && (
+              <span className="px-2 py-0.5 rounded-md bg-red-950/90 backdrop-blur-md text-[10px] font-extrabold text-red-400 border border-red-500/50 uppercase animate-pulse">
+                ⚡ GLITCH: {(activeScene?.glitchEffect || 'rgb_split').replace(/_/g, ' ')}
+              </span>
+            )}
+            {activeScene?.sfxLabel && (
+              <span className="px-2 py-0.5 rounded-md bg-purple-950/80 backdrop-blur-md text-[10px] font-bold text-purple-300 border border-purple-500/30">
+                🔊 {activeScene.sfxLabel}
+              </span>
+            )}
             {activeScene?.on_screen_text && (
               <span className="px-2 py-0.5 rounded-md bg-neutral-900/90 backdrop-blur-md text-[10px] font-extrabold text-amber-300 border border-amber-500/30">
                 {activeScene.on_screen_text}
