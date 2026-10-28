@@ -9,6 +9,7 @@ export interface RenderOptions {
   resolution: '720p' | '1080p';
   quality: 'standard' | 'high';
   format: 'mp4';
+  fastMode?: boolean;
 }
 
 export interface RenderValidationReport {
@@ -126,6 +127,24 @@ async function probeBrowserVideo(
   });
 }
 
+function isTauredProject(project: VideoProject): boolean {
+  if (project.id === 'project_taured_mystery_legend') return true;
+  if (project.project.title?.toLowerCase().includes('taured')) return true;
+  const usesTauredAssets =
+    project.scenes.length === 5 &&
+    project.scenes.every((s) => (s.imageUrl || '').includes('taured_scene_'));
+  return usesTauredAssets;
+}
+
+function isHoiaBaciuProject(project: VideoProject): boolean {
+  if (project.id === 'project_hoia_baciu_forest_mystery') return true;
+  if (project.project.title?.toLowerCase().includes('hoia')) return true;
+  const usesHoiaAssets =
+    project.scenes.length === 5 &&
+    project.scenes.every((s) => (s.imageUrl || '').includes('hoia_baciu_scene_'));
+  return usesHoiaAssets;
+}
+
 function isMothmanProject(project: VideoProject): boolean {
   if (project.id === 'project_mothman_mystery_legend') return true;
   if (project.project.title?.toLowerCase().includes('mothman')) return true;
@@ -233,9 +252,13 @@ export class ClientVideoRenderService implements VideoRenderService {
       // Server endpoint not running (e.g. static GitHub Pages deployment)
     }
 
-    // 2. Check Pre-Compiled Canonical Master MP4 for Mothman Mystery or Dunning-Kruger on Static Hosting
-    if (isMothmanProject(project) || isDunningKrugerProject(project)) {
-      const canonicalFile = isMothmanProject(project)
+    // 2. Check Pre-Compiled Canonical Master MP4 for Taured, Hoia-Baciu, Mothman, or Dunning-Kruger on Static Hosting
+    if (isTauredProject(project) || isHoiaBaciuProject(project) || isMothmanProject(project) || isDunningKrugerProject(project)) {
+      const canonicalFile = isTauredProject(project)
+        ? 'taured_mystery_master_1080p.mp4'
+        : isHoiaBaciuProject(project)
+        ? 'hoia_baciu_forest_master_1080p.mp4'
+        : isMothmanProject(project)
         ? 'mothman_mystery_master_1080p.mp4'
         : 'dunning_kruger_master_1080p.mp4';
       const candidates = [

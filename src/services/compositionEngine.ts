@@ -74,10 +74,62 @@ export const KNOWN_VOICE_DURATIONS: Record<string, number> = {
   'mothman_voice_3.mp3': 9.70,
   'mothman_voice_4.mp3': 12.34,
   'mothman_voice_5.mp3': 10.90,
+  'hoia_baciu_voice_1.mp3': 11.71,
+  'hoia_baciu_voice_2.mp3': 12.74,
+  'hoia_baciu_voice_3.mp3': 10.13,
+  'hoia_baciu_voice_4.mp3': 11.30,
+  'hoia_baciu_voice_5.mp3': 11.04,
+  'taured_voice_1.mp3': 8.57,
+  'taured_voice_2.mp3': 10.97,
+  'taured_voice_3.mp3': 11.21,
+  'taured_voice_4.mp3': 14.95,
+  'taured_voice_5.mp3': 13.20,
 };
 
 // Multi-word important phrases that should stay together and receive visual emphasis
 const EMPHASIS_PHRASES: string[][] = [
+  ['A', 'PASSPORT', 'FROM', 'TAURED'],
+  ['A', 'PASSPORT'],
+  ['FROM', 'TAURED'],
+  ['TAURED'],
+  ['NOT', 'ON', 'THE', 'MAP'],
+  ['NOT', 'ON', 'MAP'],
+  ['HE', 'WAS', 'GONE'],
+  ['WAS', 'GONE'],
+  ['REAL', 'CASE', 'OR', 'LEGEND'],
+  ['REAL', 'CASE'],
+  ['OR', 'LEGEND'],
+  ['THE', 'MYSTERY', 'REMAINS'],
+  ['MYSTERY', 'REMAINS'],
+  ['JOHN', 'ZEGRUS'],
+  ['BETWEEN', 'FRANCE', 'AND', 'SPAIN'],
+  ['A', 'STRANGE', 'FOREST'],
+  ['STRANGE', 'FOREST'],
+  ['SOMEONE', 'WAS', 'WATCHING'],
+  ['SOMEONE', 'IS', 'WATCHING'],
+  ['THE', 'EMPTY', 'CLEARING'],
+  ['CIRCULAR', 'CLEARING'],
+  ['1968'],
+  ['WHAT', 'DID', 'HE', 'SEE'],
+  ['THE', 'MYSTERY', 'CONTINUES'],
+  ['HOIA-BACIU', 'FOREST'],
+  ['HOIA-BACIU'],
+  ['BERMUDA', 'TRIANGLE'],
+  ['IN', 'TRANSYLVANIA'],
+  ['OF', 'ROMANIA'],
+  ['STRANGE', 'DISORIENTATION'],
+  ['INEXPLICABLE', 'PHENOMENA'],
+  ['UNSETTLING', 'QUIET'],
+  ['UNSETTLING', 'SILENCE'],
+  ['FROM', 'THE', 'SHADOWS'],
+  ['LEAD', 'HIKERS', 'ASTRAY'],
+  ['MYSTERIOUS', 'DEAD', 'ZONE'],
+  ['DEAD', 'ZONE'],
+  ['REFUSES', 'TO', 'GROW'],
+  ['BAFFLING', 'SCIENTISTS'],
+  ['MILITARY', 'TECHNICIAN'],
+  ['HOVERING', 'OBJECT'],
+  ['DISTANT', 'SILHOUETTES'],
   ['STRANGE', 'FIGURE'],
   ['DARK', 'FIGURE'],
   ['TALL', 'DARK', 'FIGURE'],
@@ -100,6 +152,28 @@ const EMPHASIS_PHRASES: string[][] = [
 // Multi-word collocations that should be kept on the same caption chunk (even if not highlighted)
 const COHESIVE_COLLOCATIONS: string[][] = [
   ...EMPHASIS_PHRASES,
+  ['IN', 'THE', 'HEART'],
+  ['OF', 'TRANSYLVANIA'],
+  ['HOIA-BACIU', 'FOREST'],
+  ['BERMUDA', 'TRIANGLE'],
+  ['OF', 'ROMANIA'],
+  ['MORNING', 'FOG'],
+  ['STRANGE', 'DISORIENTATION'],
+  ['INEXPLICABLE', 'PHENOMENA'],
+  ['INTO', 'THE', 'TREES'],
+  ['FROM', 'THE', 'SHADOWS'],
+  ['LEAD', 'HIKERS', 'ASTRAY'],
+  ['CIRCULAR', 'CLEARING'],
+  ['DEAD', 'ZONE'],
+  ['FOR', 'DECADES'],
+  ['IN', '1968'],
+  ['MILITARY', 'TECHNICIAN'],
+  ['HOVERING', 'OBJECT'],
+  ['WHAT', 'DID', 'HE', 'SEE'],
+  ['AT', 'NIGHT'],
+  ['COLD', 'FOG'],
+  ['DISTANT', 'SILHOUETTES'],
+  ['THE', 'MYSTERY', 'CONTINUES'],
   ['IN', '1966'],
   ['POINT', 'PLEASANT'],
   ['WEST', 'VIRGINIA'],
@@ -115,6 +189,29 @@ const COHESIVE_COLLOCATIONS: string[][] = [
 
 // Single-word important story keywords
 const EMPHASIS_KEYWORDS = new Set([
+  'TAURED',
+  'ANDORRA',
+  'PASSPORT',
+  'AIRPORT',
+  'ZEGRUS',
+  'MAP',
+  'LEGEND',
+  'OFFICIALS',
+  'GONE',
+  'STRANGEST',
+  'HOIA-BACIU',
+  'TRANSYLVANIA',
+  'ROMANIA',
+  'BERMUDA',
+  'TRIANGLE',
+  'CLEARING',
+  '1968',
+  'DISORIENTATION',
+  'PHENOMENA',
+  'UNSETTLING',
+  'HOVERING',
+  'SILHOUETTES',
+  'CONTINUES',
   '1966',
   '1967',
   'STRANGE',
@@ -210,29 +307,56 @@ export function computeStoryGlitchIntensity(
   glitchEffect: GlitchEffect | undefined,
   progress: number,
   isTransitioning: boolean,
-  transitionType: TransitionEffect
+  transitionType: TransitionEffect,
+  scene?: Scene
 ): number {
   if (isTransitioning && transitionType === 'glitch') {
-    return 0.45;
+    return 0.48;
   }
   if (!glitchEffect || glitchEffect === 'none') return 0;
 
-  // Short, tasteful documentary glitch windows (~0.30s each) only on key story moments:
-  // Scene 1: Brief RGB split when "tall dark figure / red eyes" appears (~0.58 - 0.608)
-  // Scene 2: Brief flicker when "red eyes seemed to shine" (~0.48 - 0.508)
-  // Scene 3: No glitch burst (keep documentary restraint)
-  // Scene 4: Brief distortion when "Silver Bridge collapsed" (~0.31 - 0.340)
-  // Scene 5: Brief VHS flicker at final "watching from the darkness" (~0.88 - 0.910)
+  // 1. Explicit scene-level glitch triggers take highest priority
+  if (scene?.glitchTriggers && scene.glitchTriggers.length > 0) {
+    const sceneDur = scene.duration || 10;
+    const currentSceneSec = progress * sceneDur;
+    for (const trig of scene.glitchTriggers) {
+      if (currentSceneSec >= trig.timeOffset && currentSceneSec <= trig.timeOffset + trig.duration) {
+        const mid = trig.timeOffset + trig.duration / 2;
+        const half = trig.duration / 2;
+        const dist = Math.abs(currentSceneSec - mid) / Math.max(0.01, half);
+        return Math.max(0, (1 - dist * dist) * (trig.intensity || 0.52));
+      }
+    }
+  }
+
+  // 2. Specialized VHS flicker / archival texture
+  if (glitchEffect === 'vhs_flicker' || glitchEffect === 'vhs_distortion') {
+    if (progress >= 0.38 && progress <= 0.74) {
+      const mid = 0.56;
+      const dist = Math.abs(progress - mid) / 0.18;
+      return Math.max(0, (1 - dist * dist) * 0.42);
+    }
+    return 0;
+  }
+
+  // 3. Digital static burst
+  if (glitchEffect === 'digital_static' || glitchEffect === 'pixel_tearing') {
+    if ((progress >= 0.45 && progress <= 0.54) || (progress >= 0.88 && progress <= 0.94)) {
+      return 0.50;
+    }
+    return 0;
+  }
+
   const windows: Array<[number, number, number]> =
     sceneIndex === 0
       ? [[0.58, 0.608, 0.48]]
       : sceneIndex === 1
-      ? [[0.48, 0.508, 0.42]]
+      ? [[0.48, 0.518, 0.46]]
       : sceneIndex === 2
-      ? []
+      ? [[0.52, 0.552, 0.44]]
       : sceneIndex === 3
-      ? [[0.31, 0.34, 0.52]]
-      : [[0.88, 0.91, 0.48]];
+      ? [[0.31, 0.34, 0.52], [0.48, 0.68, 0.42]]
+      : [[0.86, 0.90, 0.48]];
 
   for (const [startP, endP, peak] of windows) {
     if (progress >= startP && progress <= endP) {
@@ -585,7 +709,8 @@ export function getFrameStateAtTime(timeline: MasterTimeline, currentTime: numbe
     activeSegment.glitchEffect,
     activeProgress,
     isTransitioning,
-    activeSegment.transitionType
+    activeSegment.transitionType,
+    activeSegment.scene
   );
 
   return {
@@ -639,30 +764,30 @@ export function computeCameraTransform(
       };
     case 'pan_up':
       return {
-        scale: 1.08,
-        txPercent: 0,
-        tyPercent: 2.5 - p * 5.0,
-        rotateDeg: 0,
+        scale: 1.12,
+        txPercent: Math.sin(p * Math.PI * 3) * 0.22, // subtle organic handheld camera sway
+        tyPercent: 3.5 - p * 7.0, // tilts smoothly from man looking up (+3.5%) to sky & object (-3.5%)
+        rotateDeg: Math.sin(p * Math.PI) * 0.25,
       };
     case 'pan_down':
       return {
-        scale: 1.08,
+        scale: 1.12,
         txPercent: 0,
-        tyPercent: -2.5 + p * 5.0,
+        tyPercent: -3.5 + p * 7.0,
         rotateDeg: 0,
       };
     case 'ken_burns':
       return {
         scale: 1.02 + p * 0.09,
-        txPercent: -1.4 + p * 2.8,
-        tyPercent: 1.2 - p * 2.4,
-        rotateDeg: 0,
+        txPercent: -1.2 + p * 2.4,
+        tyPercent: 1.0 - p * 2.0,
+        rotateDeg: Math.sin(p * Math.PI) * 0.45, // subtle rotational drift
       };
     case 'parallax':
       return {
         scale: 1.03 + p * 0.08,
-        txPercent: -1.5 + p * 3.0,
-        tyPercent: -p * 1.8,
+        txPercent: -2.0 + p * 4.0, // tracking across trees
+        tyPercent: -p * 1.5,
         rotateDeg: 0,
       };
     case 'floating':
@@ -813,6 +938,71 @@ function drawSceneVisualLayer(
         ctx.arc(px, py, radius, 0, Math.PI * 2);
         ctx.fill();
       }
+
+      // Scene 2 specific: Near the end of the scene, slightly darken the surrounding forest
+      if (scene.on_screen_text?.includes('WATCHING') || scene.id === 2) {
+        if (animProgress > 0.60) {
+          const darkProgress = (animProgress - 0.60) / 0.40;
+          const darkGrad = ctx.createRadialGradient(
+            width * 0.5,
+            height * 0.55,
+            width * 0.2,
+            width * 0.5,
+            height * 0.55,
+            width * 0.8
+          );
+          darkGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          darkGrad.addColorStop(0.7, `rgba(4, 8, 12, ${(darkProgress * 0.48).toFixed(3)})`);
+          darkGrad.addColorStop(1, `rgba(0, 0, 0, ${(darkProgress * 0.75).toFixed(3)})`);
+          ctx.fillStyle = darkGrad;
+          ctx.fillRect(0, 0, width, height);
+        }
+      }
+
+      // Scene 3 specific: Move fog gently across the clearing
+      if (scene.on_screen_text?.includes('CLEARING') || scene.id === 3) {
+        const driftX = (animProgress - 0.5) * width * 0.22;
+        const clearingFog = ctx.createRadialGradient(
+          width * 0.5 + driftX,
+          height * 0.58,
+          width * 0.08,
+          width * 0.5 + driftX,
+          height * 0.58,
+          width * 0.68
+        );
+        clearingFog.addColorStop(0, 'rgba(203, 213, 225, 0.14)');
+        clearingFog.addColorStop(0.55, 'rgba(148, 163, 184, 0.07)');
+        clearingFog.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = clearingFog;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      // Scene 4 specific: 1968 archival photographic texture & vintage grain
+      if (scene.on_screen_text?.includes('1968') || scene.id === 4) {
+        ctx.fillStyle = 'rgba(235, 230, 215, 0.035)';
+        ctx.fillRect(0, 0, width, height);
+        const grainSeed = Math.sin(animProgress * 150);
+        ctx.fillStyle = `rgba(0, 0, 0, ${(0.04 + Math.abs(grainSeed) * 0.04).toFixed(3)})`;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      // Scene 5 specific: Increase fog depth gradually, darken frame at final moment, fade to black
+      if (scene.on_screen_text?.includes('MYSTERY') || scene.id === 5) {
+        const nightFogAlpha = 0.07 + animProgress * 0.16;
+        const nightFog = ctx.createLinearGradient(0, height * 0.35, 0, height * 0.88);
+        nightFog.addColorStop(0, `rgba(186, 210, 235, ${(nightFogAlpha * 0.6).toFixed(3)})`);
+        nightFog.addColorStop(0.7, `rgba(148, 163, 184, ${nightFogAlpha.toFixed(3)})`);
+        nightFog.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = nightFog;
+        ctx.fillRect(0, 0, width, height);
+
+        if (animProgress > 0.82) {
+          const fadeToBlackAlpha = Math.min(1.0, (animProgress - 0.82) / 0.18);
+          ctx.fillStyle = `rgba(0, 0, 0, ${fadeToBlackAlpha.toFixed(3)})`;
+          ctx.fillRect(0, 0, width, height);
+        }
+      }
+
       ctx.restore();
     }
   } else {
@@ -824,7 +1014,7 @@ function drawSceneVisualLayer(
 }
 
 /**
- * Render subtle, restrained documentary glitch effects (short RGB split, brief flicker, subtle static)
+ * Render subtle, restrained documentary glitch effects (RGB split, VHS scanlines, digital static, film scratches)
  * when `glitchIntensity > 0`.
  */
 function renderGlitchEffects(
@@ -833,45 +1023,92 @@ function renderGlitchEffects(
   width: number,
   height: number,
   intensity: number,
-  currentTime: number
+  currentTime: number,
+  effectType: GlitchEffect = 'rgb_split'
 ) {
   if (intensity <= 0.02) return;
 
   ctx.save();
   const scaleFactor = width / 1080;
-  const shiftPx = Math.round(intensity * 9 * scaleFactor * Math.sin(currentTime * 55));
+  const shiftPx = Math.round(intensity * 12 * scaleFactor * Math.sin(currentTime * 55));
 
-  // 1. Subtle horizontal tracking displacement (at most 2 thin slices)
-  const sliceCount = Math.min(2, Math.ceil(intensity * 3));
-  for (let s = 0; s < sliceCount; s++) {
-    const sliceSeed = Math.sin(currentTime * 43 + s * 19);
-    const sliceY = Math.max(
-      0,
-      Math.min(height - 30, Math.floor((sliceSeed + 1) * 0.5 * height))
-    );
-    const sliceH = Math.floor((10 + (s % 2) * 12) * scaleFactor);
-    const offset = Math.round(sliceSeed * intensity * 14 * scaleFactor);
-    try {
-      ctx.drawImage(canvas, 0, sliceY, width, sliceH, offset, sliceY, width, sliceH);
-    } catch {
-      // ignore if tainted
+  // 1. Digital Glitch / Pixel Tearing / Slicing
+  if (effectType === 'pixel_tearing' || effectType === 'digital_static' || effectType === 'signal_distortion') {
+    const sliceCount = Math.min(4, Math.ceil(intensity * 5));
+    for (let s = 0; s < sliceCount; s++) {
+      const sliceSeed = Math.sin(currentTime * 53 + s * 23);
+      const sliceY = Math.max(
+        0,
+        Math.min(height - 40, Math.floor((sliceSeed + 1) * 0.5 * height))
+      );
+      const sliceH = Math.floor((12 + (s % 3) * 16) * scaleFactor);
+      const offset = Math.round(sliceSeed * intensity * 24 * scaleFactor);
+      try {
+        ctx.drawImage(canvas, 0, sliceY, width, sliceH, offset, sliceY, width, sliceH);
+      } catch {
+        // ignore if tainted
+      }
+    }
+  } else {
+    // Subtle horizontal tracking displacement
+    const sliceCount = Math.min(2, Math.ceil(intensity * 3));
+    for (let s = 0; s < sliceCount; s++) {
+      const sliceSeed = Math.sin(currentTime * 43 + s * 19);
+      const sliceY = Math.max(
+        0,
+        Math.min(height - 30, Math.floor((sliceSeed + 1) * 0.5 * height))
+      );
+      const sliceH = Math.floor((10 + (s % 2) * 12) * scaleFactor);
+      const offset = Math.round(sliceSeed * intensity * 14 * scaleFactor);
+      try {
+        ctx.drawImage(canvas, 0, sliceY, width, sliceH, offset, sliceY, width, sliceH);
+      } catch {
+        // ignore if tainted
+      }
     }
   }
 
-  // 2. Subtle RGB Chromatic Split tint
-  ctx.globalCompositeOperation = 'screen';
-  ctx.fillStyle = `rgba(239, 68, 68, ${(intensity * 0.14).toFixed(3)})`;
-  ctx.fillRect(Math.max(0, shiftPx), 0, width, height);
+  // 2. RGB Chromatic Split
+  if (effectType === 'rgb_split' || effectType === 'vhs_distortion' || effectType === 'signal_distortion') {
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = `rgba(239, 68, 68, ${(intensity * 0.16).toFixed(3)})`;
+    ctx.fillRect(Math.max(0, shiftPx), 0, width, height);
 
-  ctx.fillStyle = `rgba(6, 182, 212, ${(intensity * 0.10).toFixed(3)})`;
-  ctx.fillRect(Math.max(0, -shiftPx), 0, width, height);
-  ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = `rgba(6, 182, 212, ${(intensity * 0.12).toFixed(3)})`;
+    ctx.fillRect(Math.max(0, -shiftPx), 0, width, height);
+    ctx.globalCompositeOperation = 'source-over';
+  }
 
-  // 3. Brief subtle scanlines
-  ctx.fillStyle = `rgba(0, 0, 0, ${(intensity * 0.18).toFixed(3)})`;
-  const lineStep = Math.max(5, Math.round(7 * scaleFactor));
-  for (let y = 0; y < height; y += lineStep) {
-    ctx.fillRect(0, y, width, Math.max(1, Math.round(1.5 * scaleFactor)));
+  // 3. Digital Static / Noise
+  if (effectType === 'digital_static' || effectType === 'scanline_static') {
+    ctx.fillStyle = `rgba(255, 255, 255, ${(intensity * 0.08).toFixed(3)})`;
+    const dotCount = Math.floor(intensity * 120);
+    for (let i = 0; i < dotCount; i++) {
+      const rx = (Math.sin(currentTime * 101 + i) * 0.5 + 0.5) * width;
+      const ry = (Math.cos(currentTime * 137 + i) * 0.5 + 0.5) * height;
+      const rw = Math.max(2, Math.round(4 * scaleFactor));
+      ctx.fillRect(rx, ry, rw, 2);
+    }
+  }
+
+  // 4. VHS Tracking Scanlines
+  if (effectType === 'vhs_flicker' || effectType === 'vhs_distortion' || effectType === 'scanline_static') {
+    ctx.fillStyle = `rgba(0, 0, 0, ${(intensity * 0.22).toFixed(3)})`;
+    const lineStep = Math.max(4, Math.round(6 * scaleFactor));
+    for (let y = 0; y < height; y += lineStep) {
+      ctx.fillRect(0, y, width, Math.max(1, Math.round(1.5 * scaleFactor)));
+    }
+  }
+
+  // 5. Film Scratches & Archival Dust
+  if (effectType === 'film_scratches') {
+    ctx.strokeStyle = `rgba(255, 255, 255, ${(intensity * 0.35).toFixed(3)})`;
+    ctx.lineWidth = Math.max(1, Math.round(1.2 * scaleFactor));
+    const scratchX = ((Math.sin(currentTime * 33) * 0.5 + 0.5) * width);
+    ctx.beginPath();
+    ctx.moveTo(scratchX, 0);
+    ctx.lineTo(scratchX + (Math.sin(currentTime * 91) * 8), height);
+    ctx.stroke();
   }
 
   ctx.restore();
@@ -1078,7 +1315,7 @@ export function renderMasterFrame(
 
   // 3. Apply Subtle Story-Driven Glitch Effects
   if (glitchIntensity > 0.02 && ctx.canvas) {
-    renderGlitchEffects(ctx, ctx.canvas, width, height, glitchIntensity, currentTime);
+    renderGlitchEffects(ctx, ctx.canvas, width, height, glitchIntensity, currentTime, activeSegment.glitchEffect);
   }
 
   // 4. Subtle Lower-Third Gradient for Mobile Caption Readability

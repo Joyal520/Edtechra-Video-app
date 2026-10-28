@@ -9,3 +9,20 @@ coverage/
 env*.txt
 .aistudio/
 Gemini_Generated_Image_*.jpg
+
+# Large media assets, renders, audio, and generated cache (DO NOT COMMIT)
+*.mp4
+*.mov
+*.webm
+*.avi
+*.mkv
+*.ass
+*.ts.buildinfo
+.cache/
+asset_cache/
+public/generated/
+docs/generated/
+public/sfx/
+docs/sfx/
+qc_frames/
+

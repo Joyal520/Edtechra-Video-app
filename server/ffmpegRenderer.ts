@@ -197,7 +197,7 @@ function writeAssSubtitleFile(
 
 export async function renderVideoWithFfmpeg(
   project: VideoProject,
-  options: { resolution: '720p' | '1080p'; quality: 'standard' | 'high'; format: 'mp4' }
+  options: { resolution: '720p' | '1080p'; quality: 'standard' | 'high'; format: 'mp4'; fastMode?: boolean }
 ): Promise<{
   success: boolean;
   downloadUrl: string;
@@ -250,7 +250,12 @@ export async function renderVideoWithFfmpeg(
   const isCreepy =
     project.project.style === 'creepy_legend' ||
     project.id.includes('mothman') ||
-    project.project.title.toLowerCase().includes('mothman');
+    project.project.title.toLowerCase().includes('mothman') ||
+    project.id.includes('hoia') ||
+    project.project.title.toLowerCase().includes('hoia') ||
+    project.id.includes('taured') ||
+    project.project.title.toLowerCase().includes('taured') ||
+    project.project.musicTrackId === 'track_beneath_the_heavy_soil';
 
   interface ScenePlan {
     imagePath: string;
@@ -263,6 +268,7 @@ export async function renderVideoWithFfmpeg(
     animation: string;
     transition: string;
     glitchEffect?: string;
+    glitchTriggers?: Array<{ timeOffset: number; duration: number; effect: string; intensity: number }>;
   }
 
   const scenePlans: ScenePlan[] = [];
@@ -301,6 +307,7 @@ export async function renderVideoWithFfmpeg(
       animation: sc.animation || 'slow_zoom_in',
       transition: sc.transition || 'crossfade',
       glitchEffect: sc.glitchEffect,
+      glitchTriggers: sc.glitchTriggers as any,
     });
   }
 
@@ -400,6 +407,12 @@ export async function renderVideoWithFfmpeg(
       case 'pan_right':
         zoompanExpr = `zoompan=z='1.08':x='(iw-iw/zoom)*(on/${frames})':y='(ih-ih/zoom)/2':d=${frames}:fps=30:s=${width}x${height}`;
         break;
+      case 'pan_up':
+        zoompanExpr = `zoompan=z='1.12':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)*(1-on/${frames})':d=${frames}:fps=30:s=${width}x${height}`;
+        break;
+      case 'pan_down':
+        zoompanExpr = `zoompan=z='1.12':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)*(on/${frames})':d=${frames}:fps=30:s=${width}x${height}`;
+        break;
       case 'ken_burns':
       case 'parallax':
         zoompanExpr = `zoompan=z='min(zoom+0.00030,1.09)':x='(iw-iw/zoom)*(0.25+0.5*on/${frames})':y='(ih-ih/zoom)*(0.65-0.35*on/${frames})':d=${frames}:fps=30:s=${width}x${height}`;
@@ -408,7 +421,10 @@ export async function renderVideoWithFfmpeg(
         zoompanExpr = `zoompan=z='min(zoom+0.00030,1.085)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:fps=30:s=${width}x${height}`;
     }
 
-    const gradeFilter = isCreepy
+    const isScene4Retro = plan.animation === 'pan_up' || plan.glitchEffect === 'vhs_flicker';
+    const gradeFilter = isScene4Retro
+      ? `,noise=alls=11:allf=t+u,eq=brightness=0.03:contrast=1.10:gamma=1.18:saturation=0.90`
+      : isCreepy
       ? `,eq=brightness=0.04:contrast=1.08:gamma=1.22:saturation=0.95`
       : '';
 
@@ -442,23 +458,54 @@ export async function renderVideoWithFfmpeg(
     currentOffset += scenePlans[i].duration;
   }
 
-  // 5c. Apply Subtle, Short Documentary Glitch Effects (~0.30s bursts only at key moments, never overused)
+  // 5c. Apply Reusable Documentary Glitch & Mystery Effects (narrative-timed, never continuous)
   const hasGlitches =
-    isCreepy || scenePlans.some((p) => p.glitchEffect && p.glitchEffect !== 'none');
+    isCreepy || scenePlans.some((p) => (p.glitchEffect && p.glitchEffect !== 'none') || (p.glitchTriggers && p.glitchTriggers.length > 0));
   if (hasGlitches) {
     const glitchWindows: string[] = [];
+    const heavyGlitchWindows: string[] = [];
+
     for (let i = 0; i < scenePlans.length; i++) {
       const p = scenePlans[i];
-      if (!p.glitchEffect || p.glitchEffect === 'none') continue;
       const st = p.startTime;
       const dur = p.duration;
-      if (i === 0) {
+
+      // 1. Explicit scene glitch triggers
+      if (p.glitchTriggers && p.glitchTriggers.length > 0) {
+        for (const trig of p.glitchTriggers) {
+          const gStart = st + trig.timeOffset;
+          const gEnd = gStart + trig.duration;
+          const expr = `between(t,${gStart.toFixed(2)},${gEnd.toFixed(2)})`;
+          if (trig.effect === 'digital_static' || trig.effect === 'pixel_tearing') {
+            heavyGlitchWindows.push(expr);
+          } else {
+            glitchWindows.push(expr);
+          }
+        }
+        continue;
+      }
+
+      if (!p.glitchEffect || p.glitchEffect === 'none') continue;
+
+      if (p.glitchEffect === 'vhs_flicker' || p.glitchEffect === 'vhs_distortion') {
+        glitchWindows.push(
+          `between(t,${(st + dur * 0.42).toFixed(2)},${(st + dur * 0.72).toFixed(2)})`
+        );
+      } else if (p.glitchEffect === 'rgb_split') {
+        glitchWindows.push(
+          `between(t,${(st + dur * 0.50).toFixed(2)},${(st + dur * 0.62).toFixed(2)})`
+        );
+      } else if (p.glitchEffect === 'digital_static' || p.glitchEffect === 'pixel_tearing') {
+        heavyGlitchWindows.push(
+          `between(t,${(st + dur * 0.48).toFixed(2)},${(st + dur * 0.56).toFixed(2)})`
+        );
+      } else if (i === 0) {
         glitchWindows.push(
           `between(t,${(st + dur * 0.58).toFixed(2)},${(st + dur * 0.608).toFixed(2)})`
         );
       } else if (i === 1) {
         glitchWindows.push(
-          `between(t,${(st + dur * 0.48).toFixed(2)},${(st + dur * 0.508).toFixed(2)})`
+          `between(t,${(st + dur * 0.48).toFixed(2)},${(st + dur * 0.518).toFixed(2)})`
         );
       } else if (i === 3) {
         glitchWindows.push(
@@ -466,7 +513,7 @@ export async function renderVideoWithFfmpeg(
         );
       } else if (i === 4) {
         glitchWindows.push(
-          `between(t,${(st + dur * 0.88).toFixed(2)},${(st + dur * 0.91).toFixed(2)})`
+          `between(t,${(st + dur * 0.86).toFixed(2)},${(st + dur * 0.90).toFixed(2)})`
         );
       }
     }
@@ -474,10 +521,26 @@ export async function renderVideoWithFfmpeg(
     if (glitchWindows.length > 0) {
       const enableExpr = glitchWindows.join('+');
       filterParts.push(
-        `[${lastVTag}]rgbashift=rh=-7:bh=7:rv=2:bv=-2:enable='${enableExpr}',noise=alls=9:allf=t+u:enable='${enableExpr}',eq=contrast=1.12:brightness=0.02:enable='${enableExpr}'[v_glitched]`
+        `[${lastVTag}]rgbashift=rh=-7:bh=7:rv=2:bv=-2:enable='${enableExpr}',noise=alls=10:allf=t+u:enable='${enableExpr}',eq=contrast=1.12:brightness=0.02:enable='${enableExpr}'[v_glitched]`
       );
       lastVTag = 'v_glitched';
     }
+
+    if (heavyGlitchWindows.length > 0) {
+      const heavyExpr = heavyGlitchWindows.join('+');
+      filterParts.push(
+        `[${lastVTag}]rgbashift=rh=-12:bh=12:rv=4:bv=-4:enable='${heavyExpr}',noise=alls=22:allf=t+u:enable='${heavyExpr}',eq=contrast=1.22:brightness=0.04:enable='${heavyExpr}'[v_hglitched]`
+      );
+      lastVTag = 'v_hglitched';
+    }
+  }
+
+  // End of video cinematic fade to black
+  const lastPlan = scenePlans[scenePlans.length - 1];
+  if (lastPlan.transition === 'dark_fade' || isCreepy) {
+    const fadeOutStart = Math.max(0.5, totalDuration - 1.2).toFixed(2);
+    filterParts.push(`[${lastVTag}]fade=t=out:st=${fadeOutStart}:d=1.2[v_fadeout]`);
+    lastVTag = 'v_fadeout';
   }
 
   // 5d. Render Modern Animated Captions (Montserrat ExtraBold, Safe Mobile Margins, Keyword Emphasis) via libass

@@ -2,6 +2,7 @@ export interface RenderOptions {
   resolution: '720p' | '1080p';
   quality: 'standard' | 'high';
   format: 'mp4';
+  fastMode?: boolean; // Fast Generation mode: reuse asset cache, render changed scenes only
 }
 
 export type AspectRatio = '9:16' | '16:9' | '1:1' | '4:5';
@@ -51,9 +52,24 @@ export type GlitchEffect =
   | 'none'
   | 'rgb_split'
   | 'vhs_flicker'
+  | 'vhs_distortion'
   | 'scanline_static'
   | 'signal_distortion'
+  | 'digital_static'
+  | 'pixel_tearing'
+  | 'film_scratches'
+  | 'light_leak'
+  | 'camera_shake'
   | 'crimson_shock';
+
+export interface GlitchTrigger {
+  id?: string;
+  timeOffset: number; // Seconds from scene start
+  duration: number; // Seconds of glitch burst (typically 0.25 - 0.45s)
+  effect: GlitchEffect;
+  intensity: number; // 0.0 to 1.0
+  keywordTrigger?: string; // Narrative phrase cue (e.g., 'TAURED', 'HE WAS GONE')
+}
 
 export type CaptionStyle = 'NORMAL' | 'BOLD' | 'KARAOKE' | 'POP' | 'MINIMAL';
 export type CaptionPosition = 'bottom' | 'center' | 'top';
@@ -126,6 +142,7 @@ export interface Scene {
   animation: AnimationEffect;
   transition: TransitionEffect;
   glitchEffect?: GlitchEffect;
+  glitchTriggers?: GlitchTrigger[];
   parallaxIntensity?: number; // 0 to 1
   sfxUrl?: string;
   sfxLabel?: string;
@@ -134,9 +151,44 @@ export interface Scene {
   imageSourceType?: ImageSourceType;
   cropMode?: ImageCropMode;
   audioDuration?: number;
+  sceneHash?: string;
   isGeneratingImage?: boolean;
   isGeneratingAudio?: boolean;
   error?: string;
+}
+
+export type ProductionPresetId = 'mystery_documentary' | 'horror' | 'historical_mystery' | 'custom';
+
+export interface ProductionPresetConfig {
+  id: ProductionPresetId;
+  name: string;
+  description: string;
+  animationPattern: AnimationEffect[];
+  transitions: TransitionEffect[];
+  defaultGlitch: GlitchEffect;
+  gradeProfile: 'creepy' | 'retro_vintage' | 'noir' | 'clean';
+  captionStyle: CaptionStyle;
+  captionColor: string;
+  musicTrackId: string;
+  musicVolume: number;
+  voiceVolume: number;
+  duckingAmountDb: number;
+}
+
+export interface ProductionChecklistItem {
+  id: string;
+  label: string;
+  status: 'passed' | 'warning' | 'failed';
+  details: string;
+}
+
+export interface ProductionChecklistReport {
+  isReady: boolean;
+  score: number; // 0 to 100
+  items: ProductionChecklistItem[];
+  cachedAssetsCount: number;
+  missingAssetsCount: number;
+  warnings: string[];
 }
 
 export interface ProjectSettings {
@@ -146,6 +198,7 @@ export interface ProjectSettings {
   resolution: string;
   fps: number;
   style: VideoStyle;
+  presetId?: ProductionPresetId;
   customStylePrompt?: string;
   language: string;
   total_duration: number;
@@ -154,6 +207,7 @@ export interface ProjectSettings {
   musicVolume: number; // 0 to 1
   voiceVolume: number; // 0 to 1
   sfxVolume?: number; // 0 to 1
+  fastMode?: boolean;
 }
 
 export interface VideoProject {

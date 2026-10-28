@@ -7,6 +7,7 @@ import {
 import {
   DUNNING_KRUGER_PROJECT,
   MOTHMAN_MYSTERY_PROJECT,
+  HOIA_BACIU_FOREST_PROJECT,
 } from '../services/storageService';
 import {
   Plus,
@@ -37,6 +38,24 @@ interface TemplateStarter {
 }
 
 const TEMPLATE_STARTERS: TemplateStarter[] = [
+  {
+    title: 'The Man Who Came From Taured (Mystery Reel)',
+    topic: 'The mysterious traveler at Tokyo airport with a passport from a nonexistent country called Taured, and the real 1950s John Zegrus case.',
+    style: 'creepy_legend',
+    aspectRatio: '9:16',
+    duration: 58,
+    scenesCount: 5,
+    category: 'Historical Mystery',
+  },
+  {
+    title: 'Hoia-Baciu: The Haunted Forest (Creepy Legend)',
+    topic: 'The Bermuda Triangle of Romania: unexplained fog, the circular barren clearing, and the famous 1968 UFO photograph.',
+    style: 'creepy_legend',
+    aspectRatio: '9:16',
+    duration: 58,
+    scenesCount: 5,
+    category: 'Creepy Legend',
+  },
   {
     title: 'The Mothman Mystery (Creepy Legend)',
     topic: 'The 1966–1967 Point Pleasant sightings of a tall winged figure with glowing red eyes and the tragic Silver Bridge collapse.',

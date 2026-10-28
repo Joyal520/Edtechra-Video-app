@@ -5,6 +5,7 @@ import {
   SEED_DEMO_PROJECT,
   DUNNING_KRUGER_PROJECT,
   MOTHMAN_MYSTERY_PROJECT,
+  HOIA_BACIU_FOREST_PROJECT,
 } from './services/storageService';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
@@ -25,7 +26,7 @@ import {
 export default function App() {
   const [currentView, setCurrentView] = useState<'dashboard' | 'wizard' | 'json_import' | 'workspace'>('dashboard');
   const [projects, setProjects] = useState<VideoProject[]>([]);
-  const [activeProject, setActiveProject] = useState<VideoProject>(SEED_DEMO_PROJECT);
+  const [activeProject, setActiveProject] = useState<VideoProject>(HOIA_BACIU_FOREST_PROJECT);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const navigateTo = (view: 'dashboard' | 'wizard' | 'json_import' | 'workspace') => {
@@ -44,12 +45,12 @@ export default function App() {
     voiceId: string;
   }>({
     topic: '',
-    style: 'stickman',
+    style: 'creepy_legend',
     aspectRatio: '9:16',
     scenesCount: 5,
-    targetDuration: 45,
+    targetDuration: 58,
     language: 'English',
-    voiceId: 'female_educational',
+    voiceId: 'male_educational',
   });
 
   // Load projects from storage on mount
@@ -57,7 +58,11 @@ export default function App() {
     const list = storageService.getProjects();
     setProjects(list);
     const activeId = storageService.getActiveProjectId();
-    const found = list.find((p) => p.id === activeId) || list[0] || SEED_DEMO_PROJECT;
+    const found =
+      list.find((p) => p.id === activeId) ||
+      list.find((p) => p.id === HOIA_BACIU_FOREST_PROJECT.id) ||
+      list[0] ||
+      HOIA_BACIU_FOREST_PROJECT;
     setActiveProject(found);
   }, []);
 
@@ -85,6 +90,10 @@ export default function App() {
   };
 
   const handleSelectTemplate = (tmpl: any) => {
+    if (tmpl.title.includes('Hoia') || tmpl.title.includes('Baciu')) {
+      handleOpenProject(HOIA_BACIU_FOREST_PROJECT);
+      return;
+    }
     if (tmpl.title.includes('Mothman')) {
       handleOpenProject(MOTHMAN_MYSTERY_PROJECT);
       return;

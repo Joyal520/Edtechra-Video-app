@@ -6,6 +6,7 @@ import {
   RenderResult,
   videoRenderService,
 } from '../../services/renderService';
+import { runProductionChecklist } from '../../services/productionChecklist';
 import {
   Download,
   Film,
@@ -14,6 +15,7 @@ import {
   X,
   RefreshCw,
   ShieldCheck,
+  Zap,
 } from 'lucide-react';
 
 interface ExportModalProps {
@@ -29,10 +31,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 }) => {
   const [resolution, setResolution] = useState<'720p' | '1080p'>('1080p');
   const [quality, setQuality] = useState<'standard' | 'high'>('high');
+  const [fastMode, setFastMode] = useState<boolean>(true);
   const [isRendering, setIsRendering] = useState(false);
   const [progressState, setProgressState] = useState<RenderProgressUpdate | null>(null);
   const [downloadResult, setDownloadResult] = useState<RenderResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const checklistReport = runProductionChecklist(project);
 
   if (!isOpen) return null;
 
@@ -45,6 +50,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       resolution,
       quality,
       format: 'mp4',
+      fastMode,
     };
 
     try {
@@ -183,6 +189,58 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 <div className="py-2 px-3 rounded-xl bg-neutral-950 border border-neutral-800 text-xs font-bold text-white text-center">
                   MP4 Video (H.264 / AAC)
                 </div>
+              </div>
+            </div>
+
+            {/* Fast Generation Mode & Asset Caching */}
+            <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className={`p-1.5 rounded-lg ${fastMode ? 'bg-amber-500/20 text-amber-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    Fast Generation Mode
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-mono">
+                      Cost: $0.00 Reused
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-neutral-400">
+                    Reuses asset cache & scene clips. Renders only modified scenes.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFastMode(!fastMode)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  fastMode ? 'bg-amber-500' : 'bg-neutral-800'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    fastMode ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Production Checklist Status */}
+            <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="text-white flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  Production Checklist
+                </span>
+                <span className="text-emerald-400 font-mono">{checklistReport.score}% Ready</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] text-neutral-300">
+                {checklistReport.items.slice(0, 4).map((item) => (
+                  <div key={item.id} className="flex items-center gap-1.5 text-neutral-400">
+                    <span className="text-emerald-400 text-xs">✓</span>
+                    <span className="truncate">{item.label}</span>
+                  </div>
+                ))}
               </div>
             </div>
 

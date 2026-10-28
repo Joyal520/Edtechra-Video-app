@@ -3,6 +3,300 @@ import { VideoProject } from '../types/video';
 const STORAGE_KEY = 'faceless_ai_video_projects';
 const ACTIVE_PROJECT_ID_KEY = 'faceless_active_project_id';
 
+// Mystery Documentary Video: The Man Who Came From Taured (5 Scenes, ~57.6s Master Timeline, 9:16 Vertical Reel)
+export const TAURED_MYSTERY_PROJECT: VideoProject = {
+  id: 'project_taured_mystery_legend',
+  createdAt: '2026-10-28T08:00:00.000Z',
+  updatedAt: new Date().toISOString(),
+  status: 'ready',
+  originalTopic:
+    'The Man Who Came From Taured: The mysterious traveler at Tokyo airport, the impossible passport, the guarded hotel room, and the John Zegrus connection',
+  thumbnailUrl: './generated/images/taured_scene_1.png',
+  exportedVideoUrl: './generated/videos/taured_mystery_master_1080p.mp4',
+  project: {
+    title: 'The Man Who Came From Taured',
+    description:
+      'A cinematic faceless mystery documentary exploring the legend of a mysterious traveler with a passport from a nonexistent country called Taured, and the real 1950s case behind the story.',
+    aspect_ratio: '9:16',
+    resolution: '1080x1920',
+    fps: 30,
+    style: 'creepy_legend',
+    presetId: 'historical_mystery',
+    language: 'English',
+    total_duration: 58.4,
+    voiceId: 'male_educational',
+    musicTrackId: 'track_beneath_the_heavy_soil',
+    musicVolume: 0.28,
+    voiceVolume: 1.0,
+    sfxVolume: 0.32,
+    fastMode: true,
+  },
+  captions: {
+    enabled: true,
+    style: 'POP',
+    fontSize: 'lg',
+    position: 'bottom',
+    textColor: '#ffffff',
+    highlightColor: '#ff3b3b',
+    backgroundColor: 'rgba(6, 6, 10, 0.84)',
+    maxWordsPerLine: 3,
+  },
+  scenes: [
+    {
+      id: 1,
+      duration: 8.85,
+      audioDuration: 8.57,
+      narration:
+        'A man arrived at an airport carrying a passport from a country called Taured. The strange part? Nobody could find Taured on the map.',
+      image_prompt:
+        'Cinematic 9:16 vertical 1950s international airport terminal at night. A mysterious well-dressed traveler in a dark woolen trench coat and fedora holding a worn leather suitcase and a vintage passport in hand. Atmospheric overhead airport lighting casting long shadows across polished marble floors, cold retro color palette, dramatic film noir lighting, no monsters, highly detailed historical mystery documentary photography.',
+      on_screen_text: 'A PASSPORT FROM TAURED',
+      animation: 'slow_zoom_in',
+      transition: 'crossfade',
+      glitchEffect: 'rgb_split',
+      glitchTriggers: [
+        { timeOffset: 4.2, duration: 0.38, effect: 'rgb_split', intensity: 0.60, keywordTrigger: 'TAURED' },
+      ],
+      imageUrl: './generated/images/taured_scene_1.png',
+      audioUrl: './generated/audio/taured_voice_1.mp3',
+      sfxUrl: './sfx/taured_sfx_1.mp3',
+      sfxLabel: '1950s Airport Ambient Tannoy & Sub-Bass Drone',
+      imageSourceType: 'ai',
+      cropMode: 'cover',
+    },
+    {
+      id: 2,
+      duration: 11.25,
+      audioDuration: 10.97,
+      narration:
+        'According to the famous story, he told officials that Taured was a real country somewhere between France and Spain. But the location he pointed to was actually Andorra.',
+      image_prompt:
+        'Cinematic 9:16 vertical macro close-up of an old vintage passport document open on an oak desk. In weathered gold stamped typography, the country name clearly reads TAURED. Perplexed vintage immigration officials in 1950s uniforms leaning in with magnifying glasses. In the shadowy background, the mysterious traveler stands calmly with consistent features. Analog scanlines, archival photographic grain, dark moody lighting.',
+      on_screen_text: 'TAURED? NOT ON THE MAP',
+      animation: 'slow_zoom_in',
+      transition: 'film_dissolve',
+      glitchEffect: 'vhs_flicker',
+      glitchTriggers: [
+        { timeOffset: 3.6, duration: 0.42, effect: 'vhs_flicker', intensity: 0.55, keywordTrigger: 'TAURED' },
+        { timeOffset: 8.9, duration: 0.38, effect: 'rgb_split', intensity: 0.65, keywordTrigger: 'ANDORRA' },
+      ],
+      imageUrl: './generated/images/taured_scene_2.png',
+      audioUrl: './generated/audio/taured_voice_2.mp3',
+      sfxUrl: './sfx/taured_sfx_2.mp3',
+      sfxLabel: 'Analog Tape Hiss & Forensic Paper Shuffle',
+      imageSourceType: 'ai',
+      cropMode: 'cover',
+    },
+    {
+      id: 3,
+      duration: 11.50,
+      audioDuration: 11.21,
+      narration:
+        'The story says officials became confused and placed him in a guarded hotel room while they investigated. The next morning, according to the legend, the mysterious man was gone.',
+      image_prompt:
+        'Cinematic 9:16 vertical mysterious hotel room at 3 AM. An empty unmade bed with rumpled sheets, sheer window curtains billowing gently in the night breeze from an unlocked window. On the small wooden bedside table sits an abandoned leather passport and documents. Through the cracked open door, the silhouette of a guard stands in the dimly lit hallway. Eerie film noir mystery, unexplained disappearance, no fantasy magic.',
+      on_screen_text: 'HE WAS GONE',
+      animation: 'pan_left',
+      transition: 'dark_fade',
+      glitchEffect: 'signal_distortion',
+      glitchTriggers: [
+        { timeOffset: 8.2, duration: 0.45, effect: 'signal_distortion', intensity: 0.70, keywordTrigger: 'HE WAS GONE' },
+      ],
+      imageUrl: './generated/images/taured_scene_3.png',
+      audioUrl: './generated/audio/taured_voice_3.mp3',
+      sfxUrl: './sfx/taured_sfx_3.mp3',
+      sfxLabel: 'Empty Corridor Room Hum & Distant Clock Chime',
+      imageSourceType: 'ai',
+      cropMode: 'cover',
+    },
+    {
+      id: 4,
+      duration: 15.25,
+      audioDuration: 14.95,
+      narration:
+        'No reliable evidence has confirmed the popular version of this story. Some researchers connect it to a real 1950s case involving a man named John Zegrus, whose unusual passport story was later greatly expanded online.',
+      image_prompt:
+        'Cinematic 9:16 vertical shot of a dark forensic investigation board in an archival room. Taut red string connects vintage black-and-white documents, a weathered map of Europe with Andorra pinned and circled, an old passport photocopy, and a high-contrast silhouette portrait of a man labeled John Zegrus. Atmospheric low key lighting, archival dust, gritty documentary texture.',
+      on_screen_text: 'REAL CASE OR LEGEND?',
+      animation: 'ken_burns',
+      transition: 'crossfade',
+      glitchEffect: 'digital_static',
+      glitchTriggers: [
+        { timeOffset: 7.2, duration: 0.42, effect: 'digital_static', intensity: 0.75, keywordTrigger: 'JOHN ZEGRUS' },
+      ],
+      imageUrl: './generated/images/taured_scene_4.png',
+      audioUrl: './generated/audio/taured_voice_4.mp3',
+      sfxUrl: './sfx/taured_sfx_4.mp3',
+      sfxLabel: 'Archival Static Burst & Sub-Bass Investigation Strike',
+      imageSourceType: 'ai',
+      cropMode: 'cover',
+    },
+    {
+      id: 5,
+      duration: 13.45,
+      audioDuration: 13.20,
+      narration:
+        'So, did a man really come from a country called Taured? The evidence suggests the famous story is probably a mystery built around a real case. But the legend remains one of the internet\'s strangest stories.',
+      image_prompt:
+        'Cinematic 9:16 vertical shot of an empty, desolate 1950s airport concourse late at night. In the distance down the polished hallway, the shadowy silhouette of the mysterious man recedes into thick darkness and cold mist. A vintage flight departure board reflects dimly in wet glass with the word TAURED faintly glowing and glitching. Dramatic monochrome contrast, chilling atmospheric fog, noir mystery resolution.',
+      on_screen_text: 'THE MYSTERY REMAINS.',
+      animation: 'slow_zoom_in',
+      transition: 'dark_fade',
+      glitchEffect: 'rgb_split',
+      glitchTriggers: [
+        { timeOffset: 3.0, duration: 0.35, effect: 'rgb_split', intensity: 0.60, keywordTrigger: 'TAURED' },
+        { timeOffset: 9.6, duration: 0.50, effect: 'vhs_distortion', intensity: 0.70, keywordTrigger: 'THE MYSTERY REMAINS' },
+      ],
+      imageUrl: './generated/images/taured_scene_5.png',
+      audioUrl: './generated/audio/taured_voice_5.mp3',
+      sfxUrl: './sfx/taured_sfx_5.mp3',
+      sfxLabel: 'Midnight Airport Concourse Dissolve & Deep Ambient Fog',
+      imageSourceType: 'ai',
+      cropMode: 'cover',
+    },
+  ],
+};
+
+// Mystery Legend Video: Hoia-Baciu Forest (5 Scenes, ~57.8s Master Timeline, 9:16 Vertical Reel)
+export const HOIA_BACIU_FOREST_PROJECT: VideoProject = {
+  id: 'project_hoia_baciu_forest_mystery',
+  createdAt: '2026-10-28T04:00:00.000Z',
+  updatedAt: new Date().toISOString(),
+  status: 'ready',
+  originalTopic:
+    'Hoia-Baciu Forest: The Bermuda Triangle of Romania, the circular dead-zone clearing, and the 1968 UFO photograph',
+  thumbnailUrl: './generated/images/hoia_baciu_scene_1.png',
+  exportedVideoUrl: './generated/videos/hoia_baciu_forest_master_1080p.mp4',
+  project: {
+    title: 'Hoia-Baciu: The Haunted Forest',
+    description:
+      'A cinematic faceless mystery Reel exploring Romania’s Hoia-Baciu Forest, the unexplained circular clearing, and the famous 1968 photograph.',
+    aspect_ratio: '9:16',
+    resolution: '1080x1920',
+    fps: 30,
+    style: 'creepy_legend',
+    language: 'English',
+    total_duration: 57.8,
+    voiceId: 'male_educational',
+    musicTrackId: 'track_beneath_the_heavy_soil',
+    musicVolume: 0.28,
+    voiceVolume: 1.0,
+    sfxVolume: 0.32,
+  },
+  captions: {
+    enabled: true,
+    style: 'KARAOKE',
+    fontSize: 'lg',
+    position: 'bottom',
+    textColor: '#ffffff',
+    highlightColor: '#ff3b3b',
+    backgroundColor: 'rgba(6, 6, 10, 0.84)',
+    maxWordsPerLine: 3,
+  },
+  scenes: [
+    {
+      id: 1,
+      duration: 11.9,
+      audioDuration: 11.71,
+      narration:
+        'In the heart of Transylvania lies the Hoia-Baciu Forest, known as the Bermuda Triangle of Romania. Locals warn of morning fog, strange disorientation, and inexplicable phenomena.',
+      image_prompt:
+        'Cinematic 9:16 vertical wide aerial drone shot looking down upon the vast Hoia-Baciu Forest in Romania. Dense dark green pine canopy stretching into distance, morning fog and low mist blanketing treetops, cold mysterious atmosphere, no visible people, no monsters.',
+      on_screen_text: 'A STRANGE FOREST, ROMANIA',
+      animation: 'slow_zoom_in',
+      transition: 'crossfade',
+      glitchEffect: 'none',
+      parallaxIntensity: 0.85,
+      imageUrl: './generated/images/hoia_baciu_scene_1.png',
+      audioUrl: './generated/audio/hoia_baciu_voice_1.mp3',
+      sfxUrl: './sfx/hoia_baciu_sfx_1.mp3',
+      sfxLabel: 'Aerial Forest Wind & Morning Mist Drone',
+      imageSourceType: 'ai',
+      cropMode: 'cover',
+    },
+    {
+      id: 2,
+      duration: 12.9,
+      audioDuration: 12.74,
+      narration:
+        'Step into the dense trees, and an unsettling quiet takes over. Visitors describe an overwhelming sensation that someone is watching from the shadows, while isolated paths lead hikers astray.',
+      image_prompt:
+        'Cinematic 9:16 vertical shot of a lone traveler walking along a secluded narrow dirt trail through dense crooked trees in Hoia-Baciu Forest. The lone person appears small compared to the immense forest. Cold hanging fog between gnarled branches, eerie composition communicating someone unseen watching.',
+      on_screen_text: 'SOMEONE WAS WATCHING',
+      animation: 'parallax',
+      transition: 'crossfade',
+      glitchEffect: 'none',
+      parallaxIntensity: 0.95,
+      imageUrl: './generated/images/hoia_baciu_scene_2.png',
+      audioUrl: './generated/audio/hoia_baciu_voice_2.mp3',
+      sfxUrl: './sfx/hoia_baciu_sfx_2.mp3',
+      sfxLabel: 'Isolated Trail Ambience & Suspense Pulse',
+      imageSourceType: 'ai',
+      cropMode: 'cover',
+    },
+    {
+      id: 3,
+      duration: 10.3,
+      audioDuration: 10.13,
+      narration:
+        'At its center lies a mysterious dead zone: an almost perfect circular clearing where no trees or plants will grow, completely baffling scientists for decades.',
+      image_prompt:
+        'Cinematic 9:16 vertical view of the famous unexplained circular clearing deep inside Hoia-Baciu Forest in Romania. A large barren circular meadow where no trees grow, framed around the perimeter by strangely curved and twisted trees, atmospheric fog drifting low.',
+      on_screen_text: 'THE EMPTY CLEARING',
+      animation: 'ken_burns',
+      transition: 'crossfade',
+      glitchEffect: 'none',
+      parallaxIntensity: 0.85,
+      imageUrl: './generated/images/hoia_baciu_scene_3.png',
+      audioUrl: './generated/audio/hoia_baciu_voice_3.mp3',
+      sfxUrl: './sfx/hoia_baciu_sfx_3.mp3',
+      sfxLabel: 'Clearing Dead Zone Sub-Bass Resonance',
+      imageSourceType: 'ai',
+      cropMode: 'cover',
+    },
+    {
+      id: 4,
+      duration: 11.5,
+      audioDuration: 11.30,
+      narration:
+        'In 1968, a military technician photographed an ambiguous hovering object above the clearing. Decades later, historians and skeptics still ask: what did he see?',
+      image_prompt:
+        'Cinematic 1968 historical recreation inspired by the famous 1968 Hoia-Baciu photograph. A Romanian man in authentic 1960s woolen trench coat standing near pine trees looking upward with astonishment toward the overcast sky. Far above the misty forest canopy, a strange ambiguous blurred oval object hovers silently. Archival 35mm film grain, vintage color palette.',
+      on_screen_text: '1968: WHAT DID HE SEE?',
+      animation: 'pan_up',
+      transition: 'crossfade',
+      glitchEffect: 'vhs_flicker',
+      parallaxIntensity: 0.80,
+      imageUrl: './generated/images/hoia_baciu_scene_4.png',
+      audioUrl: './generated/audio/hoia_baciu_voice_4.mp3',
+      sfxUrl: './sfx/hoia_baciu_sfx_4.mp3',
+      sfxLabel: '1968 Vintage Tape Hiss & Atmospheric Hum',
+      imageSourceType: 'ai',
+      cropMode: 'cover',
+    },
+    {
+      id: 5,
+      duration: 11.2,
+      audioDuration: 11.04,
+      narration:
+        'At night, the forest vanishes into thick cold fog, where distant silhouettes appear and dissolve into the shadows. Science offers no answers, and the mystery continues.',
+      image_prompt:
+        'Cinematic 9:16 vertical night-time scene deep inside Hoia-Baciu Forest. An empty dirt pathway vanishes into heavy thick white fog between dark twisted silhouettes of ancient trees. In the extreme far distance, a very distant, faint, ambiguous silhouette is barely perceptible through the mist. Cold moonlight, chilling atmosphere.',
+      on_screen_text: 'THE MYSTERY CONTINUES',
+      animation: 'slow_zoom_in',
+      transition: 'dark_fade',
+      glitchEffect: 'none',
+      parallaxIntensity: 0.90,
+      imageUrl: './generated/images/hoia_baciu_scene_5.png',
+      audioUrl: './generated/audio/hoia_baciu_voice_5.mp3',
+      sfxUrl: './sfx/hoia_baciu_sfx_5.mp3',
+      sfxLabel: 'Night Forest Whispering Mist & Sub-Rumble',
+      imageSourceType: 'ai',
+      cropMode: 'cover',
+    },
+  ],
+};
+
 // Creepy Legend Video: The Mothman Mystery (5 Scenes, ~56.9s Master Timeline)
 export const MOTHMAN_MYSTERY_PROJECT: VideoProject = {
   id: 'project_mothman_mystery_legend',
@@ -420,7 +714,7 @@ class StorageService {
 
   private loadFromStorage(): void {
     if (typeof window === 'undefined') {
-      this.projects = [MOTHMAN_MYSTERY_PROJECT, DUNNING_KRUGER_PROJECT, PROCRASTINATION_PROJECT];
+      this.projects = [TAURED_MYSTERY_PROJECT, HOIA_BACIU_FOREST_PROJECT, MOTHMAN_MYSTERY_PROJECT, DUNNING_KRUGER_PROJECT, PROCRASTINATION_PROJECT];
       return;
     }
 
@@ -430,10 +724,42 @@ class StorageService {
         this.projects = JSON.parse(stored);
       } else {
         this.projects = [
+          JSON.parse(JSON.stringify(TAURED_MYSTERY_PROJECT)),
+          JSON.parse(JSON.stringify(HOIA_BACIU_FOREST_PROJECT)),
           JSON.parse(JSON.stringify(MOTHMAN_MYSTERY_PROJECT)),
           JSON.parse(JSON.stringify(DUNNING_KRUGER_PROJECT)),
           JSON.parse(JSON.stringify(PROCRASTINATION_PROJECT)),
         ];
+      }
+
+      // Always ensure Taured Mystery project is loaded first with calibrated master timeline & assets
+      const tmIdx = this.projects.findIndex((p) => p.id === TAURED_MYSTERY_PROJECT.id);
+      if (tmIdx === -1) {
+        this.projects.unshift(JSON.parse(JSON.stringify(TAURED_MYSTERY_PROJECT)));
+      } else {
+        this.projects[tmIdx] = {
+          ...JSON.parse(JSON.stringify(TAURED_MYSTERY_PROJECT)),
+          scenes: TAURED_MYSTERY_PROJECT.scenes,
+          project: {
+            ...TAURED_MYSTERY_PROJECT.project,
+            title: this.projects[tmIdx].project?.title || TAURED_MYSTERY_PROJECT.project.title,
+          },
+        };
+      }
+
+      // Always ensure Hoia-Baciu Forest project is present
+      const hbIdx = this.projects.findIndex((p) => p.id === HOIA_BACIU_FOREST_PROJECT.id);
+      if (hbIdx === -1) {
+        this.projects.unshift(JSON.parse(JSON.stringify(HOIA_BACIU_FOREST_PROJECT)));
+      } else {
+        this.projects[hbIdx] = {
+          ...JSON.parse(JSON.stringify(HOIA_BACIU_FOREST_PROJECT)),
+          scenes: HOIA_BACIU_FOREST_PROJECT.scenes,
+          project: {
+            ...HOIA_BACIU_FOREST_PROJECT.project,
+            title: this.projects[hbIdx].project?.title || HOIA_BACIU_FOREST_PROJECT.project.title,
+          },
+        };
       }
 
       // Always ensure Dunning-Kruger project has calibrated master timeline & assets
@@ -475,13 +801,13 @@ class StorageService {
       this.saveToStorage();
     } catch (e) {
       console.warn('Could not load stored projects, initializing demo', e);
-      this.projects = [MOTHMAN_MYSTERY_PROJECT, DUNNING_KRUGER_PROJECT, PROCRASTINATION_PROJECT];
+      this.projects = [TAURED_MYSTERY_PROJECT, HOIA_BACIU_FOREST_PROJECT, MOTHMAN_MYSTERY_PROJECT, DUNNING_KRUGER_PROJECT, PROCRASTINATION_PROJECT];
     }
   }
 
   getProjects(): VideoProject[] {
     if (this.projects.length === 0) {
-      return [MOTHMAN_MYSTERY_PROJECT, DUNNING_KRUGER_PROJECT, PROCRASTINATION_PROJECT];
+      return [TAURED_MYSTERY_PROJECT, HOIA_BACIU_FOREST_PROJECT, MOTHMAN_MYSTERY_PROJECT, DUNNING_KRUGER_PROJECT, PROCRASTINATION_PROJECT];
     }
     return [...this.projects];
   }
